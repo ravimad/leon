@@ -51,7 +51,7 @@ object Benchmarks extends App {
   object PlainTableLayout extends TableLayout {
     val infoSep    : String = ""
     val infoFooter : String = ""
-    val infoHeader : String = "Benchmarks:\n"
+    val infoHeader : String = ""
 
     def infoLine(file: String, f: String, kind: String, value: String, ts: String) : String = {
       "%-30s, %-33s, %10s, %2s, %5s".format(
