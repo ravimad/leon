@@ -24,31 +24,73 @@ object Benchmarks extends App {
   println("# Options: "+options.mkString(" "))
 
 
-  val infoSep    : String = "╟" + ("┄" * 86) + "╢"
-  val infoFooter : String = "╚" + ("═" * 86) + "╝"
-  val infoHeader : String = "  ┌────────────┐\n" +
-                            "╔═╡ Benchmarks ╞" + ("═" * 71) + "╗\n" +
-                            "║ └────────────┘" + (" " * 71) + "║"
-
-  def infoLine(file: String, f: String, kind: String, ts: String) : String = {
-    "║ %-30s %-24s %19s %5s ms ║".format(
-      file,
-      f,
-      kind,
-      ts)
+  abstract class TableLayout {
+    def infoSep: String
+    def infoFooter: String
+    def infoHeader: String
+    def infoLine(file: String, f: String, kind: String, value: String, ts: String) : String
   }
 
-  println(infoHeader)
+  object UnicodeTableLayout extends TableLayout {
+    val infoSep    : String = "╟" + ("┄" * 89) + "╢"
+    val infoFooter : String = "╚" + ("═" * 89) + "╝"
+    val infoHeader : String = "  ┌────────────┐\n" +
+                              "╔═╡ Benchmarks ╞" + ("═" * 74) + "╗\n" +
+                              "║ └────────────┘" + (" " * 74) + "║"
+
+    def infoLine(file: String, f: String, kind: String, value: String, ts: String) : String = {
+      "║ %-30s %-33s %10s %2s %5s ms ║".format(
+        file,
+        f,
+        kind,
+        value,
+        ts)
+    }
+  }
+
+  object PlainTableLayout extends TableLayout {
+    val infoSep    : String = ""
+    val infoFooter : String = ""
+    val infoHeader : String = "Benchmarks:\n"
+
+    def infoLine(file: String, f: String, kind: String, value: String, ts: String) : String = {
+      "%-30s, %-33s, %10s, %2s, %5s".format(
+        file,
+        f,
+        kind,
+        value,
+        ts)
+    }
+  }
+
+  val layout: TableLayout = if (options.contains("--plain")) {
+    PlainTableLayout
+  } else {
+    UnicodeTableLayout
+  }
+
+  println(layout.infoHeader)
 
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
   val ctx = leon.Main.processOptions(new SilentReporter, args)
 
+  val timeoutMs: Long = ctx.options.find(_.name == "timeout") match {
+    case Some(vo @ LeonValueOption(_, timeout)) =>
+      vo.asInt(ctx).map(_*1000L).getOrElse(-1)
+    case _ =>
+      -1
+  }
+
   for (file <- ctx.files) {
     val innerCtx = ctx.copy(files = List(file))
 
-    val pipeline = leon.plugin.ExtractionPhase andThen verification.AnalysisPhase
+    val pipeline = leon.plugin.ExtractionPhase andThen (if (options contains "--xlang") {
+        xlang.XlangAnalysisPhase
+     } else {
+        verification.AnalysisPhase
+     })
 
     val vr = pipeline.run(innerCtx)(file.getPath :: Nil)
 
@@ -58,29 +100,32 @@ object Benchmarks extends App {
           tTotal += (d*1000).toLong
           "%5d".format((d*1000).toLong)
         case None =>
-          "?"
+          if (timeoutMs > 0) {
+            tTotal += timeoutMs
+          }
+          "%5d".format(timeoutMs)
       }
 
-      println(infoLine(file.getName().toString, vc.funDef.id.toString, vc.kind.toString, timeStr))
+      val value = vc.value.map(if (_) "V" else "I").getOrElse("?")
+
+      println(layout.infoLine(file.getName().toString, vc.funDef.id.toString, vc.kind.toString, value, timeStr))
     }
 
-    println(infoSep)
+    println(layout.infoSep)
 
   }
 
-  println(infoLine("TOTAL", "", "", "%5d".format(tTotal)))
+  println(layout.infoLine("TOTAL", "", "", "", "%5d".format(tTotal)))
 
-  println(infoFooter)
+  println(layout.infoFooter)
 
-  println
+  //val infoHeader2 : String = "  ┌────────────┐\n" +
+  //                           "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
+  //                           "║ └────────────┘" + (" " * 71) + "║"
 
-  val infoHeader2 : String = "  ┌────────────┐\n" +
-                             "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
-                             "║ └────────────┘" + (" " * 71) + "║"
-
-  println(infoHeader2)
-  for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
-    println("║ %-70s %10s ms ║".format(name, sw.getMillis))
-  }
-  println(infoFooter)
+  //println(infoHeader2)
+  //for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
+  //  println("║ %-70s %10s ms ║".format(name, sw.getMillis))
+  //}
+  //println(infoFooter)
 }
