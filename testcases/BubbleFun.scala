@@ -141,13 +141,15 @@ object BubbleFun {
     // ----------------- content ------------------
     def content(a: Map[Int, Int], size: Int): Set[Int] = {
       require(isArray(a, size) && size < 5)
-      var i = 0
-      var s = Set.empty[Int]
-      while(i < size) {
-        s = s ++ Set(a(i))
-        i = i + 1
-      }
-      s
+      contentRec(a, size, 0)
+    }
+
+    def contentRec(a: Map[Int, Int], size: Int, i: Int): Set[Int] = {
+      require(isArray(a, size) && i >= 0)
+      if(i < size) 
+        Set(a(i)) ++ contentRec(a, size, i+1)
+      else 
+        Set.empty[Int]
     }
 
 }
