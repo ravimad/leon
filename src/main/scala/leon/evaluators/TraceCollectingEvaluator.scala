@@ -9,23 +9,34 @@ import purescala.TypeTrees._
 
 import xlang.Trees._
 
-class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx, prog) {
-  val name = "evaluator"
-  val description = "Recursive interpreter for PureScala expressions"
+/**
+ * @author Ravi
+ */
+class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx, prog) {
+  val name = "Trace collecting evaluator"
+  val description = "Recursive interpreter for PureScala expressions that keeps of the execution trace"
 
   private def typeErrorMsg(tree : Expr, expected : TypeTree) : String = "Type error : expected %s, found %s.".format(expected, tree)
   private case class EvalError(msg : String) extends Exception
   private case class RuntimeError(msg : String) extends Exception
 
-  private val maxSteps = 50000
+  private val maxSteps = 50000  
 
   def eval(expression: Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
     var left: Int = maxSteps
     
     //debugging 
-    //ctx.reporter.info("!......Interpreter has been called.....!");
+    ctx.reporter.info("collecting execution traces...");
+    
+    //a symbol evaluation of an expression
+    case class SymVal(guard :Expr, value: Expr)
 
-    def rec(ctx: Map[Identifier,Expr], expr: Expr) : Expr = if(left <= 0) {
+    /**   
+     * The result of rec is a pair of expression and SymVal, the expression is the result of evaluation 
+     * which is a constant, the SymVal is the result of symbolic evaluation of the expression which 
+     * corresponds to the strongest postcondition of the (concrete) path exercised by the input.
+     */    
+    def rec(ctx: Map[Identifier,Expr], expr: Expr) : (Expr,SymVal) = if(left <= 0) {
       throw RuntimeError("Diverging computation.")
     } else {
       // println("Step on : " + expr)
@@ -37,25 +48,41 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
             val res = ctx(id)
             if(!isGround(res)) {
               throw EvalError("Substitution for identifier " + id.name + " is not ground.")
-            } else {
-              res
+            } else {              
+              (res,SymVal(BooleanLiteral(true),Variable(id)))              
             }
           } else {
             throw EvalError("No value for identifier " + id.name + " in mapping.")
           }
         }
         case Tuple(ts) => {
-          val tsRec = ts.map(rec(ctx, _))
-          Tuple(tsRec)
+          var guard : Expr = BooleanLiteral(true)
+          var list = Seq[Expr]() 
+          
+          //recursively compute the symbolic and concrete values of all the elements of the tuple
+          val tsRec = ts.map(x => { 
+            val res = rec(ctx, x)
+            guard = And(guard,res._2.guard)
+            list = list ++ Seq(res._2.value)
+            res._1
+          })         
+          (Tuple(tsRec),SymVal(guard,Tuple(list)))
         }
+        
         case TupleSelect(t, i) => {
-          val Tuple(rs) = rec(ctx, t)
-          rs(i-1)
+          val (cval,sval) = rec(ctx, t)
+          val Tuple(bs) = sval.value
+          val Tuple(rs) = cval 
+          (rs(i-1),SymVal(sval.guard,bs(i-1)))
         }
+        
         case Let(i,e,b) => {
-          val first = rec(ctx, e)
-          rec(ctx + ((i -> first)), b)
+          val (cval,sval) = rec(ctx, e)
+          val (cval2,sval2) = rec(ctx + ((i -> cval)), b)
+          val guard = And(And(sval.guard,Equals(Variable(i),sval.value)),sval2.guard)          
+          (cval2,SymVal(guard,sval2.value))          
         }
+        
         case Error(desc) => throw RuntimeError("Error reached in evaluation: " + desc)
         case IfExpr(cond, then, elze) => {
           val first = rec(ctx, cond)
