@@ -72,7 +72,8 @@ class FairZ3Solver(context : LeonContext)
       // that would be good?
       new CodeGenEvaluator(context, prog)
     } else {
-      new DefaultEvaluator(context, prog)
+      //new DefaultEvaluator(context, prog)
+      new TraceCollectingEvaluator(context,prog)
     }
 
     terminator = new SimpleTerminationChecker(context, prog)
