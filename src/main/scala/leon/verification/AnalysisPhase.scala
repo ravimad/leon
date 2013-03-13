@@ -20,8 +20,12 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when trying to prove a verification condition.")
   )
-
+  
   def run(ctx: LeonContext)(program: Program) : VerificationReport = {
+    runner(ctx)(program,None)
+  }
+
+  def runner(ctx: LeonContext)(program: Program, modelListener : Option[(Map[Identifier,Expr],Expr) => Unit]) : VerificationReport = {
     val functionsToAnalyse : MutableSet[String] = MutableSet.empty
     var timeout: Option[Int] = None
 
@@ -38,7 +42,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
     val reporter = ctx.reporter
 
     val trivialSolver = new TrivialSolver(ctx)
-    val fairZ3 = new FairZ3Solver(ctx)
+    val fairZ3 = new FairZ3Solver(ctx,modelListener)
 
     val solvers0 : Seq[Solver] = trivialSolver :: fairZ3 :: Nil
     val solvers: Seq[Solver] = timeout match {

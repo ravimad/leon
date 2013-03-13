@@ -19,7 +19,7 @@ import termination._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(context : LeonContext)
+class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier,Expr],Expr) => Unit] = None)
   extends Solver(context)
      with AbstractZ3Solver
      with Z3ModelReconstruction 
@@ -37,7 +37,7 @@ class FairZ3Solver(context : LeonContext)
     LeonFlagOptionDef("codegen",            "--codegen",            "Use compiled evaluator instead of interpreter"),
     LeonFlagOptionDef("fairz3:unrollcores", "--fairz3:unrollcores", "Use unsat-cores to drive unrolling while remaining fair")
   )
-
+ 
   // What wouldn't we do to avoid defining vars?
   val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores) = locally {
     var lucky            = false
@@ -51,7 +51,7 @@ class FairZ3Solver(context : LeonContext)
       case LeonFlagOption("feelinglucky")       => lucky            = true
       case LeonFlagOption("codegen")            => codegen          = true
       case LeonFlagOption("evalground")         => evalground       = true
-      case LeonFlagOption("fairz3:unrollcores") => unrollUnsatCores = true
+      case LeonFlagOption("fairz3:unrollcores") => unrollUnsatCores = true      
       case _ =>
     }
 
@@ -72,8 +72,8 @@ class FairZ3Solver(context : LeonContext)
       // that would be good?
       new CodeGenEvaluator(context, prog)
     } else {
-      //new DefaultEvaluator(context, prog)
-      new TraceCollectingEvaluator(context,prog)
+      new DefaultEvaluator(context, prog)
+      //new TraceCollectingEvaluator(context,prog)
     }
 
     terminator = new SimpleTerminationChecker(context, prog)
@@ -139,11 +139,9 @@ class FairZ3Solver(context : LeonContext)
     solver.assertCnstr(expression)
     (solver.checkAssumptions(assumptions), solver.getModel, solver.getUnsatCore)
   }
-
-  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
-    if(!forceStop) {
-
-      val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
+  
+   private def ConvertModelToInput(model: Z3Model, variables: Set[Identifier]) : Map[Identifier,Expr] = { 
+          val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
         if(isKnownDecl(p._1)) {
           val fd = functionDeclToDef(p._1)
@@ -168,7 +166,13 @@ class FairZ3Solver(context : LeonContext)
         } else Seq()
       }).toMap
 
-      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
+      modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap      
+  }
+
+  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
+    if(!forceStop) {
+
+      val asMap = ConvertModelToInput(model,variables)
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = evaluator.eval(formula, asMap)
 
@@ -369,6 +373,7 @@ class FairZ3Solver(context : LeonContext)
     private val feelingLucky = enclosing.feelingLucky
     private val checkModels  = enclosing.checkModels
     private val useCodeGen   = enclosing.useCodeGen
+    private val modelListener = enclosing.modelListener
 
     initZ3
 
@@ -448,7 +453,7 @@ class FairZ3Solver(context : LeonContext)
       val z3Time        = new Stopwatch()
       val scalaTime     = new Stopwatch()
       val unrollingTime = new Stopwatch()
-      val unlockingTime = new Stopwatch()
+      val unlockingTime = new Stopwatch()      
 
       foundDefinitiveAnswer = false
 
@@ -473,16 +478,17 @@ class FairZ3Solver(context : LeonContext)
         }).toSet
       }
 
+      var unrollStep : Int = -1
       while(!foundDefinitiveAnswer && !forceStop) {
-
+    	  unrollStep = unrollStep 
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
 
         reporter.info(" - Running Z3 search...")
 
-        // reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-        // reporter.info("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
-        // reporter.info("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+        /*reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+        reporter.info("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
+        reporter.info("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))*/              
 
         z3Time.start
         solver.push() // FIXME: remove when z3 bug is fixed
@@ -506,6 +512,12 @@ class FairZ3Solver(context : LeonContext)
               val (isValid, model) = validateModel(z3model, entireFormula, varsInVC)
 
               if (isValid) {
+                
+            	/**@author ravi        
+            	 * invoking model listener     
+            	 */
+            	if (this.modelListener.isDefined) this.modelListener.get(model,entireFormula)
+            	  
                 foundAnswer(Some(true), model)
               } else {
                 reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
@@ -516,6 +528,11 @@ class FairZ3Solver(context : LeonContext)
               scalaTime.start
               val model = modelToMap(z3model, varsInVC)
               scalaTime.stop
+              
+              /**@author ravi             
+               * invoking model listener
+               */
+              if (this.modelListener.isDefined) this.modelListener.get(model,entireFormula)
 
               //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               //reporter.info("- Found a model:")
@@ -532,8 +549,8 @@ class FairZ3Solver(context : LeonContext)
 
           // This branch is both for with and without unsat cores. The
           // distinction is made inside.
-          case Some(false) =>
-
+          case Some(false) =>                      
+            
             val z3Core = solver.getUnsatCore
 
             def coreElemToBlocker(c: Z3AST): (Z3AST, Boolean) = {
@@ -562,6 +579,7 @@ class FairZ3Solver(context : LeonContext)
               }
 
             }
+                        
 
             //reporter.info("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
             //reporter.info("UNSAT BECAUSE: "+core.mkString("  AND  "))
@@ -581,24 +599,33 @@ class FairZ3Solver(context : LeonContext)
               z3Time.stop
 
               res2 match {
-                case Some(false) =>
-                  //reporter.info("UNSAT WITHOUT Blockers")
-                  foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
-                case Some(true) =>
-                  //reporter.info("SAT WITHOUT Blockers")
-                  if (this.feelingLucky && !forceStop) {
-                    // we might have been lucky :D
-                    luckyTime.start
-                    val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC)
-                    luckyTime.stop
+              case Some(false) =>
+              	//reporter.info("UNSAT WITHOUT Blockers")
+              	foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
+              
+              case Some(true) => {
+            	  if (this.feelingLucky && !forceStop)
+            	  {
+            		  //reporter.info("SAT WITHOUT Blockers")                  
+            		  // we might have been lucky :D
+            		  luckyTime.start
+            		  val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC)
+            		  luckyTime.stop
 
-                    if(wereWeLucky) {
-                      foundAnswer(Some(true), cleanModel)
-                    }
-                  }
-
-                case None =>
-                  foundAnswer(None)
+            		  if(wereWeLucky) {
+            			  foundAnswer(Some(true), cleanModel)
+            		  }
+            	  }
+            	  /**
+            	   * Ok Relax! we cannot be lucky always, lets try to infer an interpolant using this model.
+            	   * @author ravi
+            	   */
+            	  if (this.modelListener.isDefined && !forceStop){                    
+            		  //pass the model to the model listeners
+            		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC),entireFormula)
+            	  }
+              }              	
+              case None => foundAnswer(None)
               }
             }
 

@@ -28,6 +28,7 @@ object Main {
       LeonFlagOptionDef ("xlang",        "--xlang",       "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("parse",        "--parse",       "Checks only whether the program is valid PureScala"),
       LeonValueOptionDef("debug",        "--debug=[1-5]", "Debug level"),
+      LeonFlagOptionDef ("inferInv",  "--inferInv", "Infers invariants for verification"),
       LeonFlagOptionDef ("help",         "--help",        "Show help")
 
       //  Unimplemented Options:
@@ -103,13 +104,15 @@ object Main {
     // Process options we understand:
     for(opt <- leonOptions) opt match {
       case LeonFlagOption("termination") =>
-        settings = settings.copy(termination = true, xlang = false, verify = false, synthesis = false)
+        settings = settings.copy(termination = true, xlang = false, verify = false, synthesis = false, inferInv = false)
       case LeonFlagOption("synthesis") =>
-        settings = settings.copy(synthesis = true, xlang = false, verify = false)
+        settings = settings.copy(synthesis = true, xlang = false, verify = false, inferInv = false)
       case LeonFlagOption("xlang") =>
-        settings = settings.copy(synthesis = false, xlang = true)
+        settings = settings.copy(synthesis = false, xlang = true, inferInv = false)
       case LeonFlagOption("parse") =>
-        settings = settings.copy(synthesis = false, xlang = false, verify = false)
+        settings = settings.copy(synthesis = false, xlang = false, verify = false, inferInv = false)
+      case LeonFlagOption("inferInv") =>
+        settings = settings.copy(termination = false, xlang = false, verify = false, synthesis = false, inferInv = true)
       case LeonFlagOption("help") =>
         displayHelp(reporter)
       case _ =>
@@ -138,9 +141,12 @@ object Main {
         xlang.XlangAnalysisPhase
       } else if (settings.verify) {
         verification.AnalysisPhase
-      } else {
-        NoopPhase()
+      } else if (settings.inferInv) {
+        verification.InferInvariantsPhase
       }
+      else {
+        NoopPhase()
+      }    
 
     pipeBegin andThen
     pipeSynthesis andThen
