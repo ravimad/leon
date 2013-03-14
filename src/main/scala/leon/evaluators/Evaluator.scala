@@ -38,3 +38,12 @@ case class EvaluationFailure(message : String) extends EvaluationResult(None)
 
 /** Represents an evaluation that failed (in the evaluator). */
 case class EvaluationError(message : String) extends EvaluationResult(None)
+
+/** Represents a symbolic evaluation of an expression **/ 
+case class SymVal(guard :List[Expr], value: Expr)
+
+/** this represents a concolic evaluation **/
+case class ConcolicEvaluation(cval : Expr,sval: SymVal) extends EvaluationResult(Some(cval))
+
+/** this represents a concolic evaluation with markers to represent end of functions **/ 
+case class EvaluationWithPartitions(cval1: Expr, sval1: SymVal, parts: List[(FunDef,List[Expr])]) extends ConcolicEvaluation(cval1,sval1)
