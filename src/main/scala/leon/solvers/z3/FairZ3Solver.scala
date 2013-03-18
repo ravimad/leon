@@ -19,7 +19,7 @@ import termination._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier,Expr],Expr) => Unit] = None)
+class FairZ3Solver(context : LeonContext)
   extends Solver(context)
      with AbstractZ3Solver
      with Z3ModelReconstruction 
@@ -72,11 +72,17 @@ class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier
       // that would be good?
       new CodeGenEvaluator(context, prog)
     } else {
-      new DefaultEvaluator(context, prog)
-      //new TraceCollectingEvaluator(context,prog)
+      new DefaultEvaluator(context, prog)      
     }
 
     terminator = new SimpleTerminationChecker(context, prog)
+  }
+    
+  //this sets the model listener
+  var modelListener : Option[(Map[Identifier,Expr] => Unit)] = None
+  override def SetModelListener(listener: (Map[Identifier,Expr]=> Unit)) 
+  {
+    modelListener = Some(listener)
   }
 
   // This is fixed.
@@ -140,7 +146,7 @@ class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier
     (solver.checkAssumptions(assumptions), solver.getModel, solver.getUnsatCore)
   }
   
-   private def ConvertModelToInput(model: Z3Model, variables: Set[Identifier]) : Map[Identifier,Expr] = { 
+  private def ConvertModelToInput(model: Z3Model, variables: Set[Identifier]) : Map[Identifier,Expr] = { 
           val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
         if(isKnownDecl(p._1)) {
@@ -516,7 +522,7 @@ class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier
             	/**@author ravi        
             	 * invoking model listener     
             	 */
-            	if (this.modelListener.isDefined) this.modelListener.get(model,entireFormula)
+            	if (this.modelListener.isDefined) this.modelListener.get(model)
             	  
                 foundAnswer(Some(true), model)
               } else {
@@ -532,7 +538,7 @@ class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier
               /**@author ravi             
                * invoking model listener
                */
-              if (this.modelListener.isDefined) this.modelListener.get(model,entireFormula)
+              if (this.modelListener.isDefined) this.modelListener.get(model)
 
               //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               //reporter.info("- Found a model:")
@@ -621,8 +627,8 @@ class FairZ3Solver(context : LeonContext, modelListener : Option[(Map[Identifier
             	   * @author ravi
             	   */
             	  if (this.modelListener.isDefined && !forceStop){                    
-            		  //pass the model to the model listeners
-            		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC),entireFormula)
+            		  //pass the model to the model listeners            	    
+            		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC))
             	  }
               }              	
               case None => foundAnswer(None)

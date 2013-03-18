@@ -22,10 +22,10 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
   )
   
   def run(ctx: LeonContext)(program: Program) : VerificationReport = {
-    runner(ctx)(program,None)
+    runner(ctx)(program)
   }
 
-  def runner(ctx: LeonContext)(program: Program, modelListener : Option[(Map[Identifier,Expr],Expr) => Unit]) : VerificationReport = {
+  def runner(ctx: LeonContext)(program: Program) : VerificationReport = {
     val functionsToAnalyse : MutableSet[String] = MutableSet.empty
     var timeout: Option[Int] = None
 
@@ -42,7 +42,8 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
     val reporter = ctx.reporter
 
     val trivialSolver = new TrivialSolver(ctx)
-    val fairZ3 = new FairZ3Solver(ctx,modelListener)
+    val fairZ3 = new FairZ3Solver(ctx)
+    
 
     val solvers0 : Seq[Solver] = trivialSolver :: fairZ3 :: Nil
     val solvers: Seq[Solver] = timeout match {

@@ -37,6 +37,9 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
         (r, m, Set())
     }
   }
+  
+  def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {   
+  }
 
   def superseeds : Seq[String] = Nil
 
