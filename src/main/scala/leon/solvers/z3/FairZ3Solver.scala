@@ -352,6 +352,8 @@ class FairZ3Solver(context : LeonContext)
 
       var reintroducedSelf : Boolean = false
 
+      //this is a BFS unrolling. It unrolls all the function invocations in the current formula.
+      //may have to modify this.
       for(fi <- fis) {
         val template              = getTemplate(fi.funDef)
         val (newExprs, newBlocks) = template.instantiate(id, fi.args)
@@ -522,7 +524,7 @@ class FairZ3Solver(context : LeonContext)
             	/**@author ravi        
             	 * invoking model listener     
             	 */
-            	if (this.modelListener.isDefined) this.modelListener.get(model)
+            	//if (this.modelListener.isDefined) this.modelListener.get(model)
             	  
                 foundAnswer(Some(true), model)
               } else {
@@ -538,7 +540,7 @@ class FairZ3Solver(context : LeonContext)
               /**@author ravi             
                * invoking model listener
                */
-              if (this.modelListener.isDefined) this.modelListener.get(model)
+              //if (this.modelListener.isDefined) this.modelListener.get(model)
 
               //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               //reporter.info("- Found a model:")
@@ -623,13 +625,17 @@ class FairZ3Solver(context : LeonContext)
             		  }
             	  }
             	  /**
-            	   * Ok Relax! we cannot be lucky always, lets try to infer an interpolant using this model.
+            	   * Ok Relax! we cannot be lucky always, lets try to infer an invariant
             	   * @author ravi
             	   */
-            	  if (this.modelListener.isDefined && !forceStop){                    
+            	  /*if (this.modelListener.isDefined && !forceStop){                    
             		  //pass the model to the model listeners            	    
             		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC))
-            	  }
+            	  }*/
+            	  //use the linear templates for the functions that are unrolled and try to solve the implications
+            	  reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+            	  
+            	  
               }              	
               case None => foundAnswer(None)
               }
