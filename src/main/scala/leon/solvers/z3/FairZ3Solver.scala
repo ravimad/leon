@@ -612,6 +612,9 @@ class FairZ3Solver(context : LeonContext)
               	foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
               
               case Some(true) => {
+            	  //debugging info 
+                  val model = solver.getModel                  
+                  //System.exit(0)
             	  if (this.feelingLucky && !forceStop)
             	  {
             		  //reporter.info("SAT WITHOUT Blockers")                  
@@ -633,9 +636,35 @@ class FairZ3Solver(context : LeonContext)
             		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC))
             	  }*/
             	  //use the linear templates for the functions that are unrolled and try to solve the implications
-            	  reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-            	  
-            	  
+            	  //reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+            	  //convert z3 assertions to formulas
+                  println("Printing all the assertions: ")
+                  for(i <- 0 to solver.getAssertions.size - 1) { 
+                	  val expr = fromZ3Formula2(solver.getAssertions.get(i),None)
+                	  println(expr)
+                  }
+                  System.exit(0)
+                  
+                  
+                  /*val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
+                  val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
+                    if (isKnownDecl(p._1)) {
+                      val fd = functionDeclToDef(p._1)
+                      //if (!fd.hasImplementation) {
+                        val (cses, default) = p._2
+                        val ite = cses.foldLeft(fromZ3Formula(model, default, Some(fd.returnType)))((expr, q) => IfExpr(
+                          And(
+                            q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))),
+                          fromZ3Formula(model, q._2, Some(fd.returnType)),
+                          expr))
+                        Seq((fd.id, ite))
+                      //} else Seq()
+                    } else Seq()
+                  }).toMap                  
+                  reporter.info("Counter eg to induction: \n")
+                  val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC)
+                  reporter.info("\t Fucntions: "+functionsAsMap)
+                  reporter.info("\t Inputs: "+cleanModel)*/            	  
               }              	
               case None => foundAnswer(None)
               }
