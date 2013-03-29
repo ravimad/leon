@@ -84,6 +84,12 @@ class FairZ3Solver(context : LeonContext)
   {
     modelListener = Some(listener)
   }
+  
+  var clauseListener : Option[(Seq[Expr] => Unit)] = None
+  override def SetClauseListener(listener: (Seq[Expr]=> Unit)) 
+  {    
+    clauseListener = Some(listener)
+  }
 
   // This is fixed.
   protected[leon] val z3cfg = new Z3Config(
@@ -382,6 +388,7 @@ class FairZ3Solver(context : LeonContext)
     private val checkModels  = enclosing.checkModels
     private val useCodeGen   = enclosing.useCodeGen
     private val modelListener = enclosing.modelListener
+    private val clauseListener = enclosing.clauseListener
 
     initZ3
 
@@ -453,8 +460,8 @@ class FairZ3Solver(context : LeonContext)
 
     def getUnsatCore = {
       definitiveCore
-    }
-
+    }       
+    
     def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
       val totalTime     = new Stopwatch().start
       val luckyTime     = new Stopwatch()
@@ -488,7 +495,33 @@ class FairZ3Solver(context : LeonContext)
 
       var unrollStep : Int = -1
       while(!foundDefinitiveAnswer && !forceStop) {
-    	  unrollStep = unrollStep 
+
+        //unroll every time except the first time
+        var newClauses = Seq[Z3AST]()
+        if (unrollStep >= 0) {
+          reporter.info("- We need to keep going.")
+
+          val toRelease = unrollingBank.getZ3BlockersToUnlock
+
+          reporter.info(" - more unrollings")
+
+          unlockingTime.start
+          for (id <- toRelease) {
+            newClauses ++= unrollingBank.unlock(id)
+          }
+          unlockingTime.stop
+
+          unrollingTime.start
+          for (ncl <- newClauses) {
+            solver.assertCnstr(ncl)
+          }
+          unrollingTime.stop
+
+          reporter.info(" - finished unrolling")
+        }
+        else newClauses = solver.getAssertions()
+    	unrollStep += 1
+    	
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
 
@@ -588,7 +621,6 @@ class FairZ3Solver(context : LeonContext)
 
             }
                         
-
             //reporter.info("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
             //reporter.info("UNSAT BECAUSE: "+core.mkString("  AND  "))
 
@@ -613,8 +645,7 @@ class FairZ3Solver(context : LeonContext)
               
               case Some(true) => {
             	  //debugging info 
-                  val model = solver.getModel                  
-                  //System.exit(0)
+                  val model = solver.getModel                                   
             	  if (this.feelingLucky && !forceStop)
             	  {
             		  //reporter.info("SAT WITHOUT Blockers")                  
@@ -635,16 +666,12 @@ class FairZ3Solver(context : LeonContext)
             		  //pass the model to the model listeners            	    
             		  this.modelListener.get(ConvertModelToInput(solver.getModel,varsInVC))
             	  }*/
-            	  //use the linear templates for the functions that are unrolled and try to solve the implications
-            	  //reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+            	  //use the linear templates for the functions that are unrolled and try to solve the implications            	  
             	  //convert z3 assertions to formulas
-                  println("Printing all the assertions: ")
-                  for(i <- 0 to solver.getAssertions.size - 1) { 
-                	  val expr = fromZ3Formula2(solver.getAssertions.get(i),None)
-                	  println(expr)
+                  if(this.clauseListener.isDefined && !forceStop){                    
+                    val newexprs = newClauses.map(fromZ3Formula2(_))
+                    this.clauseListener.get(newexprs)
                   }
-                  System.exit(0)
-                  
                   
                   /*val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
                   val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
@@ -668,34 +695,12 @@ class FairZ3Solver(context : LeonContext)
               }              	
               case None => foundAnswer(None)
               }
-            }
-
+            } //ends if
+            
             if(forceStop) {
               foundAnswer(None)
             }
-
-            if(!foundDefinitiveAnswer) { 
-              reporter.info("- We need to keep going.")
-
-              val toRelease = unrollingBank.getZ3BlockersToUnlock
-
-              reporter.info(" - more unrollings")
-
-              for(id <- toRelease) {
-                unlockingTime.start
-                val newClauses = unrollingBank.unlock(id)
-                unlockingTime.stop
-
-                unrollingTime.start
-                for(ncl <- newClauses) {
-                  solver.assertCnstr(ncl)
-                }
-                unrollingTime.stop
-              }
-
-              reporter.info(" - finished unrolling")
-            }
-        }
+         } //ends while
       }
 
       totalTime.stop

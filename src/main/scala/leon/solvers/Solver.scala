@@ -40,6 +40,9 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
   
   def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {   
   }
+  
+  def SetClauseListener(listener: (Seq[Expr] => Unit)) {    
+  }
 
   def superseeds : Seq[String] = Nil
 
