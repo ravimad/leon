@@ -18,4 +18,22 @@ class TrivialSolver(context: LeonContext) extends Solver(context) with NaiveIncr
     case Equals(l,r) if l == r => Some(true)
     case _ => None
   }
+  
+  override def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {       
+  }
+  
+  override def SetClauseListener(listener: (Seq[Expr] => Unit)) {    
+  }
+  
+  override def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {
+    solve(And(body,Not(post))) match {
+      case Some(true) =>
+        (Some(false), Map())
+      case Some(false) =>
+        (Some(true), Map())
+      case None =>
+        (None, Map())
+    }
+  }
+
 }

@@ -63,6 +63,20 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeoutMs : 
   override def setProgram(prog: Program): Unit = {
     solver.setProgram(prog)
   }
+  
+  override def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {   
+    solver.SetModelListener(listener)
+  }
+  
+  override def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
+    solver.SetClauseListener(listener)
+  }
+  
+  override def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {
+   withTimeout(solver) {
+      solver.solve(body,post)
+    }
+  }
 
   def solve(expression: Expr) : Option[Boolean] = {
     withTimeout(solver) {

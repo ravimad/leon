@@ -85,8 +85,8 @@ class FairZ3Solver(context : LeonContext)
     modelListener = Some(listener)
   }
   
-  var clauseListener : Option[(Seq[Expr] => Unit)] = None
-  override def SetClauseListener(listener: (Seq[Expr]=> Unit)) 
+  var clauseListener : Option[((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)] = None
+  override def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr])=> Unit)) 
   {    
     clauseListener = Some(listener)
   }
@@ -125,6 +125,12 @@ class FairZ3Solver(context : LeonContext)
       functionMap = functionMap + (funDef -> z3Decl)
       reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
     }
+  }
+  
+  override def solve(body: Expr, post: Expr) = {
+    val solver = getNewSolver
+    solver.assertCnstr(body,post)    
+    (solver.check, solver.getModel)
   }
 
   override def solve(vc: Expr) = {
@@ -295,11 +301,12 @@ class FairZ3Solver(context : LeonContext)
           blockersInfo(id) = ((gen, gen, z3ast, fis))
       }
     }
-
-    def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
+    
+    def genTemplateForExpr(expr: Expr) : (FunctionTemplate,Seq[Z3AST]) = {
       // OK, now this is subtle. This `getTemplate` will return
       // a template for a "fake" function. Now, this template will
       // define an activating boolean...
+
       val template = getTemplate(expr)
 
       val z3args = for (vd <- template.funDef.args) yield {
@@ -313,16 +320,25 @@ class FairZ3Solver(context : LeonContext)
             ast
         }
       }
+      (template,z3args)
+    }
+    
+    def registerBlocks(blocks: Map[Z3AST,Set[Z3FunctionInvocation]])  = {
+      for((i, fis) <- blocks) {
+        registerBlocker(nextGeneration(0), i, fis)
+      }
+    }
 
+    def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
+      val (template,z3args) = genTemplateForExpr(expr)
+      
       // ...now this template defines clauses that are all guarded
       // by that activating boolean. If that activating boolean is 
       // undefined (or false) these clauses have no effect...
       val (newClauses, newBlocks) =
         template.instantiate(template.z3ActivatingBool, z3args)
 
-      for((i, fis) <- newBlocks) {
-        registerBlocker(nextGeneration(0), i, fis)
-      }
+      registerBlocks(newBlocks)
       
       // ...so we must force it to true!
       template.z3ActivatingBool +: newClauses
@@ -441,6 +457,52 @@ class FairZ3Solver(context : LeonContext)
     var definitiveAnswer : Option[Boolean] = None
     var definitiveModel  : Map[Identifier,Expr] = Map.empty
     var definitiveCore   : Set[Expr] = Set.empty
+    
+    //here the body and the post condition are separated
+    override def assertCnstr(body: Expr, post: Expr) {
+      
+      //create the condition to check
+      val notvc = And(body,Not(post))
+      
+      varsInVC ++= variablesOf(notvc)
+      frameExpressions = (notvc :: frameExpressions.head) :: frameExpressions.tail
+
+      //first convert body into z3 assertions
+      val (bodytemplate,bodyargs) = unrollingBank.genTemplateForExpr(body)      
+      // ...now this template defines clauses that are all guarded
+      // by that activating boolean. If that activating boolean is 
+      // undefined (or false) these clauses have no effect...
+      val (bodyClauses, bodyBlocks) =
+        bodytemplate.instantiate(bodytemplate.z3ActivatingBool, bodyargs)
+
+      unrollingBank.registerBlocks(bodyBlocks)
+      
+      //now convert post into z3 assertions
+      val (t2,postargs) = unrollingBank.genTemplateForExpr(post)      
+      val (postClauses, postBlocks) =
+        t2.instantiate(bodytemplate.z3ActivatingBool, postargs)
+      unrollingBank.registerBlocks(postBlocks)
+      
+      //now convert !post into z3 assertions
+      val (t3,npostargs) = unrollingBank.genTemplateForExpr(Not(post))      
+      val (npostClauses, npostBlocks) =
+        t3.instantiate(bodytemplate.z3ActivatingBool, npostargs)
+      unrollingBank.registerBlocks(npostBlocks)
+      
+      //init the clause listener if it exists
+      if(this.clauseListener.isDefined)
+      {
+        val bodyExprs = bodyClauses.map(fromZ3Formula2(_))
+        val postExprs = postClauses.map(fromZ3Formula2(_))
+        clauseListener.get(bodyExprs,postExprs,Seq())
+      }
+      
+      //add clauses to the solver
+      for (cl <- bodyClauses ++ npostClauses) {
+        solver.assertCnstr(cl)        
+        //println("Body clauses: "+fromZ3Formula2(bcl))
+      }            
+    }
 
     def assertCnstr(expression: Expr) {
       varsInVC ++= variablesOf(expression)

@@ -16,6 +16,9 @@ trait IncrementalSolver extends InterruptibleSolver {
 
   def push(): Unit
   def pop(lvl: Int = 1): Unit
+  def assertCnstr(body: Expr, post: Expr): Unit ={
+    throw NotImplementedException("assertCnstr with two arguments is not implemented")
+  }
   def assertCnstr(expression: Expr): Unit
 
   def halt(): Unit

@@ -4,7 +4,7 @@ package purescala
 object Common {
   import Trees.Variable
   import TypeTrees.Typed
-
+    
   // the type is left blank (Untyped) for Identifiers that are not variables
   class Identifier private[Common](val name: String, private val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
     self : Serializable =>

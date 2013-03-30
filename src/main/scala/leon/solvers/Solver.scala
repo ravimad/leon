@@ -5,6 +5,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
+import leon.NotImplementedException
 
 abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilder with InterruptibleSolver with LeonComponent {
   // This can be used by solvers to "see" the programs from which the
@@ -12,6 +13,18 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
   // ADTs, etc.) 
   // Ideally, we would pass it at construction time and not change it later.
   def setProgram(program: Program) : Unit = {}
+  
+  def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {   
+    throw NotImplementedException("SetModelListener not implemented")
+  }
+  
+  def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
+    throw NotImplementedException("SetClauseListener not implemented")
+  }
+  
+  def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {
+    throw NotImplementedException("solve with two arguments is not implemented")
+  }
 
   // Returns Some(true) if valid, Some(false) if invalid,
   // None if unknown.
@@ -36,13 +49,7 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
       case (r, m) =>
         (r, m, Set())
     }
-  }
-  
-  def SetModelListener(listener: (Map[Identifier,Expr] => Unit)) {   
-  }
-  
-  def SetClauseListener(listener: (Seq[Expr] => Unit)) {    
-  }
+  }   
 
   def superseeds : Seq[String] = Nil
 
