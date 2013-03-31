@@ -732,7 +732,7 @@ class FairZ3Solver(context : LeonContext)
             	  //convert z3 assertions to formulas
                   if(this.clauseListener.isDefined && !forceStop){                    
                     val newexprs = newClauses.map(fromZ3Formula2(_))
-                    this.clauseListener.get(newexprs)
+                    this.clauseListener.get(Seq(),Seq(),newexprs)
                   }
                   
                   /*val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
