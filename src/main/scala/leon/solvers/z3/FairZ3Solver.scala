@@ -454,7 +454,19 @@ class FairZ3Solver(context: LeonContext)
     var definitiveModel: Map[Identifier, Expr] = Map.empty
     var definitiveCore: Set[Expr] = Set.empty
 
+    //some auxiliary functions
+    private var nameToIdMap = Map[String, Identifier]()
+    private def nameToId(name: String, t: TypeTree) = {
+      nameToIdMap.getOrElse(name, {    
+          val freshid = FreshIdentifier(name, true).setType(t)
+          nameToIdMap += (name -> freshid)
+          freshid
+        })
+    }
     //here the body and the post condition are separated
+    //this method only adds initial constraints (unrolling happens inside fair check)
+    //the following code is very ugly 
+    //TODO: fix this,use a cleaner logic
     override def assertCnstr(body: Expr, post: Expr) {
 
       //create the condition to check
@@ -486,26 +498,23 @@ class FairZ3Solver(context: LeonContext)
       unrollingBank.registerBlocks(npostBlocks)
 
       //init the clause listener if it exists
-      if (this.clauseListener.isDefined) {
-        var nameToIdMap = Map[String, Identifier]()
-        val nameToId = (name: String, t: TypeTree) => nameToIdMap.getOrElse(name, {
-          val freshid = FreshIdentifier(name, true).setType(t)
-          nameToIdMap += (name -> freshid)
-          freshid
-        })
+      if (this.clauseListener.isDefined) {        
+        
+        val postExprs = postClauses.map(fromZ3Formula2(_, nameToId))        
+
+        //reset  nameToIdMap, this is a hack, this ensures that the identifier corresponding to start bool in 
+        //post clauses and body clauses + unrolled clauses are different
+        //TODO: fix this
+        this.nameToIdMap = Map[String, Identifier]()
+
         val bodyExprs = bodyClauses.map(fromZ3Formula2(_, nameToId))
-
-        //reset  nameToIdMap
-        nameToIdMap = Map[String, Identifier]()
-
-        val postExprs = postClauses.map(fromZ3Formula2(_, nameToId))
         clauseListener.get(bodyExprs, postExprs, Seq())
       }
 
-      //add clauses to the solver
-      for (cl <- bodyClauses ++ npostClauses) {
-        solver.assertCnstr(cl)
-        //println("Body clauses: "+fromZ3Formula2(bcl))
+      //add clauses to the solver (make the start activating bool true)
+      for (cl <- (bodytemplate.z3ActivatingBool +: bodyClauses) ++ npostClauses) {
+        solver.assertCnstr(cl)                         
+        println("Body+Post clauses: "+fromZ3Formula2(cl, nameToId))
       }
     }
 
@@ -585,7 +594,7 @@ class FairZ3Solver(context: LeonContext)
           unrollingTime.stop
 
           reporter.info(" - finished unrolling")
-        } else newClauses = solver.getAssertions()
+        } 
         unrollStep += 1
 
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
@@ -735,13 +744,8 @@ class FairZ3Solver(context: LeonContext)
             	  }*/
                   //use the linear templates for the functions that are unrolled and try to solve the implications            	  
                   //convert z3 assertions to formulas
-                  if (this.clauseListener.isDefined && !forceStop) {
-                    var nameToIdMap = Map[String, Identifier]()
-                    val nameToId = (name: String, t: TypeTree) => nameToIdMap.getOrElse(name, {
-                      val freshid = FreshIdentifier(name, true).setType(t)
-                      nameToIdMap += (name -> freshid)
-                      freshid
-                    })
+                  if (this.clauseListener.isDefined && !forceStop) {                    
+                    //here, the nameToIdMap of the body is reused
                     val newexprs = newClauses.map(fromZ3Formula2(_, nameToId))
                     this.clauseListener.get(Seq(), Seq(), newexprs)
                   }
