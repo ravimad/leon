@@ -514,7 +514,7 @@ class FairZ3Solver(context: LeonContext)
       //add clauses to the solver (make the start activating bool true)
       for (cl <- (bodytemplate.z3ActivatingBool +: bodyClauses) ++ npostClauses) {
         solver.assertCnstr(cl)                         
-        println("Body+Post clauses: "+fromZ3Formula2(cl, nameToId))
+        //println("Body+Post clauses: "+fromZ3Formula2(cl, nameToId))
       }
     }
 
