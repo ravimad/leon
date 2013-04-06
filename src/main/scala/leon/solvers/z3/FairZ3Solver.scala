@@ -501,12 +501,6 @@ class FairZ3Solver(context: LeonContext)
       if (this.clauseListener.isDefined) {        
         
         val postExprs = postClauses.map(fromZ3Formula2(_, nameToId))        
-
-        //reset  nameToIdMap, this is a hack, this ensures that the identifier corresponding to start bool in 
-        //post clauses and body clauses + unrolled clauses are different
-        //TODO: fix this
-        this.nameToIdMap = Map[String, Identifier]()
-
         val bodyExprs = bodyClauses.map(fromZ3Formula2(_, nameToId))
         clauseListener.get(bodyExprs, postExprs, Seq())
       }
