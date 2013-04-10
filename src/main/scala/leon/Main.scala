@@ -142,7 +142,7 @@ object Main {
       } else if (settings.verify) {
         verification.AnalysisPhase
       } else if (settings.inferInv) {
-        verification.InferInvariantsPhase
+        invariant.InferInvariantsPhase
       }
       else {
         NoopPhase()
