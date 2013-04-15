@@ -21,13 +21,13 @@ trait Z3ModelReconstruction {
     
     if(exprToZ3Id.isDefinedAt(id.toVariable)) {
       val z3ID : Z3AST = exprToZ3Id(id.toVariable)
-
+      
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
         case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
-          case Some(t) => softFromZ3Formula(model, t, expectedType)
+          case Some(t) => softFromZ3Formula(model, t, expectedType)          
         }
       }
     } else None

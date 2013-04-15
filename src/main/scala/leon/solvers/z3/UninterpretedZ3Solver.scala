@@ -51,20 +51,20 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
   protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
 
   override def solve(expression: Expr) : Option[Boolean] = solveSAT(Not(expression))._1.map(!_)
-
-  // Where the solving occurs
+  
   def solveSATWithFunctionCalls(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     val solver = getNewSolver
+    solveWithFunctionCalls(expression,solver)
+  }
+  
+  def solveWithFunctionCalls(expression : Expr, solver: solvers.IncrementalSolver) : (Option[Boolean],Map[Identifier,Expr]) = {
     val emptyModel    = Map.empty[Identifier,Expr]        
-
     solver.assertCnstr(expression)
-
     val result = solver.check match {
       case Some(false) => (Some(false), emptyModel)
       case Some(true) => (Some(true), solver.getModel)              
       case _ => (None,emptyModel)
     }
-
     result
   }
   
@@ -140,4 +140,5 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
 
 
   }
-}
+
+ }

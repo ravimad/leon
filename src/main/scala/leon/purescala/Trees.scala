@@ -385,6 +385,11 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
+  //The real constants allowed by the language are only rationals
+  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {
+    val value = (numerator,denominator)
+    val fixedType = RealType
+  }
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
   }
@@ -392,7 +397,7 @@ object Trees {
   case object UnitLiteral extends Literal[Unit] with FixedType {
     val fixedType = UnitType
     val value = ()
-  }
+  } 
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)

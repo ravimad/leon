@@ -40,6 +40,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   protected[leon] var z3IdToExpr : Map[Z3AST,Expr] = Map.empty
   protected[leon] var intSort: Z3Sort = null
+  protected[leon] var realSort: Z3Sort = null
   protected[leon] var boolSort: Z3Sort = null
   protected[leon] var setSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
@@ -119,7 +120,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     case Some(z3sort) => z3sort
     case None => {
       import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
-
+      
+      realSort = z3.mkRealSort
       intSort = z3.mkIntSort
       boolSort = z3.mkBoolSort
 
@@ -164,8 +166,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
   private def prepareSorts: Unit = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
     // NOTE THAT abstract classes that extend abstract classes are not
-    // currently supported in the translation
-    
+    // currently supported in the translation    
+    realSort = z3.mkRealSort
     intSort = z3.mkIntSort
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
@@ -269,7 +271,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(tt: TypeTree): Z3Sort = tt match {
-    case Int32Type => intSort
+    case Int32Type => intSort   
+    case RealType => realSort
     case BooleanType => boolSort
     case UnitType => unitSort
     case AbstractClassType(cd) => adtSorts(cd)
@@ -363,13 +366,13 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
           // If it has, it's just a map lookup and instant return.
           typeToSort(tu.getType)
           val constructor = tupleConstructors(tu.getType)
-          constructor(args.map(rec(_)): _*)
+          constructor(args.map(rec(_)): _*)          
         }
         case ts @ TupleSelect(tu, i) => {
           // See comment above for similar code.
           typeToSort(tu.getType)
           val selector = tupleSelectors(tu.getType)(i-1)
-          selector(rec(tu))
+          selector(rec(tu))          
         }
         case Let(i, e, b) => {
           val re = rec(e)
@@ -395,9 +398,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
             // Remove this safety check, since choose() expresions are now
             // translated to non-unrollable variables, that end up here.
-            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
-
-            val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
+            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")            
+            val newAST =  z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)
             z3IdToExpr += (newAST -> v)
@@ -420,6 +422,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
         case Not(e) => z3.mkNot(rec(e))
         case IntLiteral(v) => z3.mkInt(v, intSort)
+        case RealLiteral(num,denom) => z3.mkReal(num, denom)           
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
         case UnitLiteral => unitValue
         case Equals(l, r) => z3.mkEq(rec(l), rec(r))
@@ -540,7 +543,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     }
   }
 
-  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
+  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {        
     def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
       case Some(MapType(kt,vt)) => 
         model.getArrayValue(t) match {

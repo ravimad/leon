@@ -160,8 +160,9 @@ object TypeTrees {
   case object AnyType extends TypeTree
   case object BottomType extends TypeTree // This type is useful when we need an underlying type for None, Set.empty, etc. It should always be removed after parsing, though.
   case object BooleanType extends TypeTree
-  case object Int32Type extends TypeTree
+  case object Int32Type extends TypeTree  
   case object UnitType extends TypeTree
+  case object RealType extends TypeTree //A real variable. This is used only in Farka's Lemma
 
   class TupleType private (val bases: Seq[TypeTree]) extends TypeTree {
     lazy val dimension: Int = bases.length
