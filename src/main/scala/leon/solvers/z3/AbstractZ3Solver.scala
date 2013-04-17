@@ -543,7 +543,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     }
   }
 
-  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {        
+  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {            
     def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
       case Some(MapType(kt,vt)) => 
         model.getArrayValue(t) match {
