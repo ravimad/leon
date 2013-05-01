@@ -681,7 +681,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
           case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
           case Z3NumeralRealAST(num : BigInt,dem: BigInt) => {
-        	  RealLiteral(num.intValue,dem.intValue) 
+        	  RealLiteral(num.intValue,dem.intValue)
           } 
           /*case Z3NumeralAST(None) => {
             reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")

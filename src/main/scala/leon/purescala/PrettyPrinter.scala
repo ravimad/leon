@@ -96,6 +96,7 @@ object PrettyPrinter {
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
+    case RealLiteral(num,dem) => sb.append(num+"/"+dem)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
     case UnitLiteral => sb.append("()")
