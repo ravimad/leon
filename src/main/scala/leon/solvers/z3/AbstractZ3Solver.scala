@@ -679,12 +679,15 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
             }
           }
 
-          case Z3NumeralAST(Some(v)) => IntLiteral(v)
-          case Z3NumeralAST(None) => {
+          case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+          case Z3NumeralRealAST(num : BigInt,dem: BigInt) => {
+        	  RealLiteral(num.intValue,dem.intValue) 
+          } 
+          /*case Z3NumeralAST(None) => {
             reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
             reporter.info("Exiting procedure now")
             sys.exit(0)
-          }
+          }*/
           case other @ _ => {
             System.err.println("Don't know what this is " + other) 
             throw new CantTranslateException(t)
