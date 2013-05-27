@@ -23,7 +23,7 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
   }*/
   
   def setInferenceEngine(inferEngine: () => Boolean) {
-    throw NotImplementedException("setInferenceEngine not implemented")
+    throw NotImplementedException("setInferenceEngine not implemented: "+this.getClass())
   }
   
   def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {
