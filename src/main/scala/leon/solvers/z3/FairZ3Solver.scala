@@ -83,9 +83,14 @@ class FairZ3Solver(context: LeonContext)
     modelListener = Some(listener)
   }
 
-  var clauseListener: Option[((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit)] = None
+  /*var clauseListener: Option[((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit)] = None
   override def SetClauseListener(listener: ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit)) {
     clauseListener = Some(listener)
+  }*/
+  
+  var inferenceEngine: Option[() => Boolean] = None
+  override def setInferenceEngine(inferEng: () => Boolean) {
+    inferenceEngine = Some(inferEng)
   }
 
   // This is fixed.
@@ -400,7 +405,7 @@ class FairZ3Solver(context: LeonContext)
     private val checkModels = enclosing.checkModels
     private val useCodeGen = enclosing.useCodeGen
     private val modelListener = enclosing.modelListener
-    private val clauseListener = enclosing.clauseListener
+    private val inferEngine = enclosing.inferenceEngine
 
     initZ3
 
@@ -496,15 +501,7 @@ class FairZ3Solver(context: LeonContext)
       val (npostClauses, npostBlocks) =
         t3.instantiate(bodytemplate.z3ActivatingBool, npostargs)
       unrollingBank.registerBlocks(npostBlocks)
-
-      //init the clause listener if it exists
-      if (this.clauseListener.isDefined) {        
-        
-        val postExprs = postClauses.map(fromZ3Formula2(_, nameToId))        
-        val bodyExprs = bodyClauses.map(fromZ3Formula2(_, nameToId))
-        clauseListener.get(bodyExprs, postExprs, Seq())
-      }
-
+      
       //add clauses to the solver (make the start activating bool true)
       for (cl <- (bodytemplate.z3ActivatingBool +: bodyClauses) ++ npostClauses) {
         solver.assertCnstr(cl)                         
@@ -729,7 +726,7 @@ class FairZ3Solver(context: LeonContext)
                     }
                   }
                   /**
-                   * Ok Relax! we cannot be lucky always, lets try to infer an invariant
+                   * Ok Relax! we cannot always be lucky, lets try to infer an invariant
                    * @author ravi
                    */
                   /*if (this.modelListener.isDefined && !forceStop){                    
@@ -738,10 +735,13 @@ class FairZ3Solver(context: LeonContext)
             	  }*/
                   //use the linear templates for the functions that are unrolled and try to solve the implications            	  
                   //convert z3 assertions to formulas
-                  if (this.clauseListener.isDefined && !forceStop) {                    
-                    //here, the nameToIdMap of the body is reused
-                    val newexprs = newClauses.map(fromZ3Formula2(_, nameToId))
-                    this.clauseListener.get(Seq(), Seq(), newexprs)
+                  if (this.inferEngine.isDefined && !forceStop) {                    
+                    
+                    //try to infer an invariant for this unroll step.
+                    if(this.inferEngine.get()) {
+                      //here we are successful in proving the property so stop the analysis
+                      halt()
+                    }
                   }
 
                   /*val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap

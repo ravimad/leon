@@ -68,8 +68,12 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeoutMs : 
     solver.SetModelListener(listener)
   }
   
-  override def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
+  /*override def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
     solver.SetClauseListener(listener)
+  }*/
+  
+  override def setInferenceEngine(inferEng: (() => Boolean)) {
+    solver.setInferenceEngine(inferEng)
   }
   
   override def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {

@@ -18,8 +18,12 @@ abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilde
     throw NotImplementedException("SetModelListener not implemented")
   }
   
-  def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
+  /*def SetClauseListener(listener: ((Seq[Expr],Seq[Expr],Seq[Expr]) => Unit)) {
     throw NotImplementedException("SetClauseListener not implemented")
+  }*/
+  
+  def setInferenceEngine(inferEngine: () => Boolean) {
+    throw NotImplementedException("setInferenceEngine not implemented")
   }
   
   def solve(body: Expr,post: Expr) : (Option[Boolean], Map[Identifier, Expr]) = {
