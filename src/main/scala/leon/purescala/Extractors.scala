@@ -37,10 +37,10 @@ object Extractors {
   }
 
   object BinaryOperator {
-    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
-      case Equals(t1,t2) => Some((t1,t2,Equals.apply))
+    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = { val r = expr match {
+      case Equals(t1,t2) => Some((t1,t2,Equals.apply _))
       case Iff(t1,t2) => Some((t1,t2,Iff(_,_)))
-      case Implies(t1,t2) => Some((t1,t2,Implies.apply))
+      case Implies(t1,t2) => Some((t1,t2,Implies.apply _))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
       case Times(t1,t2) => Some((t1,t2,Times))
@@ -61,7 +61,7 @@ object Extractors {
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
+      case mg@MapGet(t1,t2) => Some((t1,t2, (t1: Expr, t2: Expr) => MapGet(t1, t2).setPosInfo(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
@@ -73,7 +73,7 @@ object Extractors {
       case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, b)))
       case (ex: BinaryExtractable) => ex.extract
       case _ => None
-    }
+    };  r}
   }
 
   trait BinaryExtractable {
