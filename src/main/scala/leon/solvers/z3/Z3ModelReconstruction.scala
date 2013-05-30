@@ -44,7 +44,7 @@ trait Z3ModelReconstruction {
   //   } else None
   // }
 
-  def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
+  def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {    
     var asMap = Map.empty[Identifier,Expr]
 
     def completeID(id : Identifier) : Unit = if (SIMPLESTCOMPLETION) {
@@ -60,7 +60,10 @@ trait Z3ModelReconstruction {
         case None if (AUTOCOMPLETEMODELS) => completeID(id)
         case None => ;
         case Some(v @ Variable(exprId)) if (AUTOCOMPLETEMODELS && exprId == id) => completeID(id)
-        case Some(ex) => asMap = asMap + ((id -> ex))
+        case Some(ex) =>{
+          
+          asMap = asMap + ((id -> ex))
+        }
       }
     }
     asMap
