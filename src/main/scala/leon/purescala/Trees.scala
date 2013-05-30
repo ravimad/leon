@@ -388,7 +388,7 @@ object Trees {
   //The real constants allowed by the language are only rationals
   case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {
     val value = (numerator,denominator)
-    val fixedType = RealType    
+    val fixedType = RealType 
   }
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
