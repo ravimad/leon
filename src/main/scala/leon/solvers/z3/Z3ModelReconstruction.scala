@@ -19,7 +19,8 @@ trait Z3ModelReconstruction {
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
-    if(exprToZ3Id.isDefinedAt(id.toVariable)) {
+    //println("ExprZ3ASTMAp: "+exprToZ3Id+" Contains: "+exprToZ3Id.contains(id.toVariable))
+    if(exprToZ3Id.isDefinedAt(id.toVariable)) {      
       val z3ID : Z3AST = exprToZ3Id(id.toVariable)
       
       expectedType match {

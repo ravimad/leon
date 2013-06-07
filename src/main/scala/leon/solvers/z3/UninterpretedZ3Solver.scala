@@ -113,8 +113,10 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     private var variables = Set[Identifier]()
 
     def assertCnstr(expression: Expr) {
-      variables ++= variablesOf(expression)
+      variables ++= variablesOf(expression)      
       solver.assertCnstr(toZ3Formula(expression).get)
+      //store the variable to expresion map
+      //println("VariableASTMap after constraint generation: "+exprToZ3Id)
     }
 
     def check: Option[Boolean] = {
@@ -126,7 +128,9 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
       solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
     }
 
-    def getModel = {
+    def getModel = {      
+      /*println("VariableASTMap before getting the model: "+exprToZ3Id)
+      println("Model: "+solver.getModel)*/
       modelToMap(solver.getModel, variables)
     }
 

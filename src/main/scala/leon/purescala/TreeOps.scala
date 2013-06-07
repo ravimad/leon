@@ -830,6 +830,7 @@ object TreeOps {
 
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type => IntLiteral(0)
+    case RealType => RealLiteral(0,1)
     case BooleanType => BooleanLiteral(false)
     case AbstractClassType(acd) => {
       val children = acd.knownChildren
