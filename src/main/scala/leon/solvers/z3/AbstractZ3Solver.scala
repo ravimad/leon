@@ -401,7 +401,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
             // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")            
             val newAST =  z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
-            exprToZ3Id += (v -> newAST)
+            exprToZ3Id += (id.toVariable -> newAST)
             z3IdToExpr += (newAST -> v)
             newAST
           }

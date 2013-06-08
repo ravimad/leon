@@ -277,6 +277,7 @@ trait CodeExtraction extends Extractors {
           ensCont = Some(c1)
         }
         case ExHoldsExpression(body2) => {
+          //println("Inside hold expression case")
           realBody = body2
           ensCont = Some(ResultVariable().setType(BooleanType))
         }
