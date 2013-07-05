@@ -29,7 +29,7 @@ object TreeOps {
 
   // Warning ! This may loop forever if the substitutions are not
   // well-formed!
-  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
+  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {    
     searchAndReplaceDFS(substs.get)(expr)
   }
 
@@ -39,6 +39,7 @@ object TreeOps {
   }
 
   def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
+
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
         if(newExpr.getType == Untyped) {
@@ -49,7 +50,9 @@ object TreeOps {
         else
           if(recursive) rec(newExpr) else newExpr
       }
-      case None => ex match {
+      case None => {        
+        ex match {
+
         case l @ Let(i,e,b) => {
           val re = rec(e)
           val rb = rec(b)
@@ -99,7 +102,7 @@ object TreeOps {
           else
             b
         }
-        case u @ UnaryOperator(t,recons) => {
+        case u @ UnaryOperator(t,recons) => {          
           val r = rec(t)
           if(r != t)
             recons(r).setType(u.getType)
@@ -129,6 +132,7 @@ object TreeOps {
         case t if t.isInstanceOf[Terminal] => t
         case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
       }
+    }
     }
 
     def inCase(cse: MatchCase) : MatchCase = cse match {
@@ -189,35 +193,56 @@ object TreeOps {
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a)
+          //println("ra: "+ra+" a: "+a)
           if(ra != a) {
+            //println("Changed")
             change = true  
             ra
           } else {
             a
           }            
         })
-        applySubst(if(change) {
+        //println("Changed Args: "+rargs)
+        val newe = applySubst(if(change) {
           recons(rargs).setType(n.getType)
         } else {
           n
         })
+        //println("Change Expr: "+newe)
+        newe
       }
       case b @ BinaryOperator(t1,t2,recons) => {
         val r1 = rec(t1)
         val r2 = rec(t2)
-        applySubst(if(r1 != t1 || r2 != t2) {
+        val newe = applySubst(if(r1 != t1 || r2 != t2) {
           recons(r1,r2).setType(b.getType)
         } else {
           b
         })
+        //println("Change Expr BinaryOperator: "+newe)
+        newe
       }
       case u @ UnaryOperator(t,recons) => {
+
+        //for debugging
+        /*if(ex.isInstanceOf[CaseClassInstanceOf]) {
+          println("Encounted: "+ex)
+          val CaseClassInstanceOf(cd,sube) = ex
+          if(subst(sube).isDefined) 
+            println("Need to replace: "+sube)
+        }*/        
+
         val r = rec(t)
-        applySubst(if(r != t) {
+        val newe = applySubst(if(r != t) {
           recons(r).setType(u.getType)
         } else {
           u
         })
+/*
+        if(ex.isInstanceOf[CaseClassInstanceOf]) {
+            println("Replaced expr: "+newe)
+        }*/
+        newe
       }
       case i @ IfExpr(t1,t2,t3) => {
         val r1 = rec(t1)
@@ -273,6 +298,7 @@ object TreeOps {
     }
 
     val res = rec(expr)
+    //println("Replaced expr: "+res)
     (res, somethingChanged)
   }
 
@@ -676,6 +702,28 @@ object TreeOps {
       matchConverterCache(expr) = converted
       converted
     }
+
+    //collapse identifiers with same name
+    /*val ids = variablesOf(toRet)
+    println("Identifiers: "+ids)
+    val idGroups = ids.groupBy(_.name)
+
+    //for each group pick a representative 
+    val replaceMap = idGroups.foldLeft(Map[Expr,Expr]())((acc, entry) => {
+      val (k,elems) = entry
+      if(elems.size > 1) {
+        val (repId :: rest) = elems.toList        
+        val rep : Expr = Variable(repId)
+        acc ++ rest.map((elem) => (elem.toVariable.asInstanceOf[Expr], rep)).toMap
+      }
+      else acc
+    })
+
+    if(replaceMap.isEmpty) {
+      toRet
+    } else {
+      replace(replaceMap,toRet)
+    }*/
 
     toRet
   }
