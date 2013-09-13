@@ -68,7 +68,18 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     result
   }
   
-  // Where the solving occurs
+  /**
+   * This procedure just creates a solver(-cum-evaluator) with the given expression and does not solve for it
+   */
+  def getSATSolverEvaluator(expression : Expr) :SolverEvaluator = {
+    val solver = getNewSolver
+    solver.assertCnstr(expression)
+    solver
+  }
+  
+  /**
+   *   This procedure does not handle expressions with function calls (I dont know the reason :-( !!)
+   */  
   override def solveSAT(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     val solver = getNewSolver
 
@@ -93,7 +104,7 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     result
   }
 
-  def getNewSolver = new solvers.IncrementalSolver {
+  def getNewSolver = new SolverEvaluator {
     initZ3
 
     val solver = z3.mkSolver
@@ -141,8 +152,19 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
         case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
       }).toSet
     }
-
-
+    
+    def evalBoolExpr(expr: Expr) : Option[Boolean]= {
+      val idMap = exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+      val ast = toZ3Formula(expr).get
+      solver.getModel.evalAs[Boolean](ast)
+    }
+    
+    def getInternalModel : Z3Model = solver.getModel
   }
-
+}
+  
+ trait SolverEvaluator extends solvers.IncrementalSolver {    
+     def evalBoolExpr(expr: Expr) : Option[Boolean]     
+     
+     def getInternalModel : Z3Model
  }

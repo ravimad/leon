@@ -8,6 +8,6 @@
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER"/>
 	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/64/akka-actor-2.0-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/64/cafebabe_2.9.2-1.2.jar"/>
-	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/64/scalaz3.jar"/>
+	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/64/scalaz3.jar" sourcepath="/home/kandhada/leon/leon/scalaz3src/main/"/>
 	<classpathentry kind="output" path="target/scala-2.9.2/classes"/>
 </classpath>
