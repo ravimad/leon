@@ -158,8 +158,11 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
       if(idMap == null)
     	  idMap = exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
       val ast = toZ3Formula(expr).get
-      println("Evaluation: "+solver.getModel.eval(ast, false))
-      solver.getModel.evalAs[Boolean](ast)
+      
+      //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
+      val model = solver.getModel
+      val res = model.eval(ast, true)
+      model.context.getBoolValue(res.get)
     }
     
     def getInternalModel : Z3Model = solver.getModel
