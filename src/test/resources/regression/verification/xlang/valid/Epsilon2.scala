@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 import leon.Utils._
 
 object Epsilon1 {
@@ -7,7 +9,7 @@ object Epsilon1 {
   //this should hold, that is the expected semantic of our epsilon
   def property1(): Boolean = {
     rand() == rand() 
-  } holds
+  }.holds
 
 
 }

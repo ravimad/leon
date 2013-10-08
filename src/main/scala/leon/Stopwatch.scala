@@ -1,11 +1,28 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 
 class StopwatchCollection(name: String) {
   var acc: Long = 0L
+  
+  var stopwatches = List[Stopwatch]()
 
   def +=(sw: Stopwatch) = synchronized { acc += sw.getMillis }
 
-  def getMillis = acc
+  def getMillis = {
+    val running =
+	    (0L /: stopwatches) {
+	      (res, sw) => res + sw.getMillis
+	    }
+      
+    acc + running
+  }
+  
+  def newStopwatch = {
+    val result = new Stopwatch()
+    stopwatches :+= result
+    result
+  }
 
   override def toString = "%20s: %5dms".format(name, acc)
 }
@@ -34,6 +51,16 @@ class Stopwatch(name: String = "Stopwatch") {
     } else {
       acc
     }
+  }
+    
+  def profile[T](block: => T): T = {
+    if (isRunning) stop
+    
+    start
+    val result = block    // call-by-name
+    stop
+    
+    result
   }
 
   def isRunning = beginning != 0L

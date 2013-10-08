@@ -1,7 +1,12 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package solvers.z3
 
+import leon.utils._
+
 import z3.scala._
+import solvers._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -14,20 +19,54 @@ import scala.collection.mutable.{Set => MutableSet}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
-  self: leon.solvers.Solver =>
+trait AbstractZ3Solver
+  extends Solver
+     with TimeoutAssumptionSolver
+     with AssumptionSolver
+     with IncrementalSolver {
 
   val context : LeonContext
+  val program : Program
+
   protected[z3] val reporter : Reporter = context.reporter
+
+  context.interruptManager.registerForInterrupts(this)
+
+  private[this] var freed = false
+  val traceE = new Exception()
+
+  override def finalize() {
+    if (!freed) {
+      println("!! Solver "+this.getClass.getName+"["+this.hashCode+"] not freed properly prior to GC:")
+      traceE.printStackTrace()
+      free()
+    }
+  }
 
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
-  protected[leon] var program : Program = null
 
-  override def setProgram(prog: Program): Unit = {
-    program = prog
+  override def free() {
+    freed = true
+    if (z3 ne null) {
+      z3.delete()
+      z3 = null;
+    }
+  }
+
+  protected[z3] var interrupted = false;
+
+  override def interrupt() {
+    interrupted = true
+    if(z3 ne null) {
+      z3.interrupt
+    }
+  }
+
+  override def recoverInterrupt() {
+    interrupted = false
   }
 
   protected[leon] def prepareFunctions : Unit
@@ -96,6 +135,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
   var isInitialized = false
   protected[leon] def initZ3() {
     if (!isInitialized) {
+      val initTime     = new Timer().start
       counter = 0
 
       z3 = new Z3Context(z3cfg)
@@ -104,6 +144,9 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
       prepareFunctions
 
       isInitialized = true
+
+      initTime.stop
+      context.timers.get("Z3Solver init") += initTime
     }
   }
 
@@ -425,7 +468,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         case RealLiteral(num,denom) => z3.mkReal(num, denom)           
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
         case UnitLiteral => unitValue
-        case Equals(l, r) => z3.mkEq(rec(l), rec(r))
+        case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
         case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
         case Minus(l, r) => z3.mkSub(rec(l), rec(r))
         case Times(l, r) => z3.mkMul(rec(l), rec(r))
@@ -525,6 +568,14 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
           val res = getLength(ar)
           res
         }
+
+        case arr @ FiniteArray(exprs) => {
+          val ArrayType(innerType) = arr.getType
+          val arrayType = arr.getType
+          val a: Expr = ArrayFill(IntLiteral(exprs.length), simplestValue(innerType)).setType(arrayType)
+          val u = exprs.zipWithIndex.foldLeft(a)((array, expI) => ArrayUpdated(array, IntLiteral(expI._2), expI._1).setType(arrayType))
+          rec(u)
+        }
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
   
         case _ => {
@@ -545,6 +596,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {            
     def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
+      case _ if z3IdToExpr contains t => z3IdToExpr(t)
+
       case Some(MapType(kt,vt)) => 
         model.getArrayValue(t) match {
           case None => throw new CantTranslateException(t)
@@ -614,7 +667,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
                 case OpTrue => BooleanLiteral(true)
                 case OpFalse => BooleanLiteral(false)
                 case OpEq => Equals(rargs(0), rargs(1))
-                case OpITE => {
+                case OpITE =>
                   assert(argsSize == 3)
                   val r0 = rargs(0)
                   val r1 = rargs(1)
@@ -622,15 +675,14 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
                   try {
                     IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
                   } catch {
-                    case e => {
+                    case e: Throwable =>
                       println("I was asking for lub because of this.")
                       println(t)
                       println("which was translated as")
                       println(IfExpr(r0,r1,r2))
                       throw e
-                    }
                   }
-                }
+
                 case OpAnd => And(rargs)
                 case OpOr => Or(rargs)
                 case OpIff => Iff(rargs(0), rargs(1))

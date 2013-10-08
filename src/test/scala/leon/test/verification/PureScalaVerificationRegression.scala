@@ -1,16 +1,14 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package test
 package verification
 
 import leon.verification.{AnalysisPhase,VerificationReport}
 
-import org.scalatest.FunSuite
-
 import java.io.File
 
-import TestUtils._
-
-class PureScalaVerificationRegression extends FunSuite {
+class PureScalaVerificationRegression extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1
@@ -19,7 +17,7 @@ class PureScalaVerificationRegression extends FunSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.plugin.ExtractionPhase andThen leon.verification.AnalysisPhase
+    leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase andThen leon.verification.AnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
@@ -35,15 +33,9 @@ class PureScalaVerificationRegression extends FunSuite {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
-      val ctx = LeonContext(
-        settings = Settings(
-          synthesis = false,
-          xlang     = false,
-          verify    = true
-        ),
+      val ctx = testContext.copy(
         options = leonOptions.toList,
-        files = List(file),
-        reporter = new SilentReporter
+        files   = List(file)
       )
 
       val pipeline = mkPipeline
@@ -67,8 +59,8 @@ class PureScalaVerificationRegression extends FunSuite {
       _.endsWith(".scala"))
 
     for(f <- fs) {
-      mkTest(f, List(LeonFlagOption("feelinglucky")), forError)(block)
-      mkTest(f, List(LeonFlagOption("codegen"), LeonFlagOption("evalground"), LeonFlagOption("feelinglucky")), forError)(block)
+      mkTest(f, List(LeonFlagOption("feelinglucky", true)), forError)(block)
+      mkTest(f, List(LeonFlagOption("codegen", true), LeonFlagOption("evalground", true), LeonFlagOption("feelinglucky", true)), forError)(block)
     }
   }
   

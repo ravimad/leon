@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -13,7 +15,7 @@ case object UnusedInput extends NormalizingRule("UnusedInput") {
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
     } else {
       Nil
     }

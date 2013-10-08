@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package purescala
 
@@ -19,10 +21,7 @@ object Common {
     override def hashCode: Int = globalId
 
     override def toString: String = {
-      if(Settings.showIDs) {
-        // angle brackets: name + "\u3008" + id + "\u3009"
-        name + "[" + id + "]"
-      } else if(alwaysShowUniqueID) {
+      if(alwaysShowUniqueID) {
         name + (if(id > 0) id else "")
       } else {
         name
@@ -57,6 +56,9 @@ object Common {
 
   object FreshIdentifier {
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), alwaysShowUniqueID)
+
+    def apply(name: String, forceId: Int): Identifier = new Identifier(name, UniqueCounter.nextGlobal, forceId, true)
+
   }
 
   trait ScalacPositional {

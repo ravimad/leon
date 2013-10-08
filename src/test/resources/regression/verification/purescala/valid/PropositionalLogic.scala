@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 import scala.collection.immutable.Set
 import leon.Utils._
 import leon.Annotations._
@@ -65,11 +67,11 @@ object PropositionalLogic {
   def nnfIsStable(f: Formula) : Boolean = {
     require(isNNF(f))
     nnf(f) == f
-  } holds
+  }.holds
   
   @induct
   def simplifyIsStable(f: Formula) : Boolean = {
     require(isSimplified(f))
     simplify(f) == f
-  } holds
+  }.holds
 }

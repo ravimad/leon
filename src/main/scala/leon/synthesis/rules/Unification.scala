@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -8,7 +10,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 object Unification {
-  case object DecompTrivialClash extends Rule("Unif Dec./Clash/Triv.") {
+  case object DecompTrivialClash extends NormalizingRule("Unif Dec./Clash/Triv.") {
     def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
@@ -27,7 +29,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
+        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
       } else {
         Nil
       }
@@ -36,7 +38,7 @@ object Unification {
 
   // This rule is probably useless; it never happens except in crafted
   // examples, and will be found by OptimisticGround anyway.
-  case object OccursCheck extends Rule("Unif OccursCheck") {
+  case object OccursCheck extends NormalizingRule("Unif OccursCheck") {
     def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 

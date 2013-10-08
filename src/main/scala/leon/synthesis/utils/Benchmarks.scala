@@ -1,11 +1,12 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.synthesis.utils
 
 import leon._
+import leon.utils._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
-import leon.solvers.z3._
-import leon.solvers.Solver
 import leon.synthesis._
 
 import java.util.Date
@@ -51,19 +52,22 @@ object Benchmarks extends App {
   println("# Using rule: "+rule.name)
 
 
-  val infoSep    : String = "╟" + ("┄" * 86) + "╢"
-  val infoFooter : String = "╚" + ("═" * 86) + "╝"
+  val infoSep    : String = "╟" + ("┄" * 100) + "╢"
+  val infoFooter : String = "╚" + ("═" * 100) + "╝"
   val infoHeader : String = "  ┌────────────┐\n" +
-                            "╔═╡ Benchmarks ╞" + ("═" * 71) + "╗\n" +
-                            "║ └────────────┘" + (" " * 71) + "║"
+                            "╔═╡ Benchmarks ╞" + ("═" * 85) + "╗\n" +
+                            "║ └────────────┘" + (" " * 85) + "║"
+
+  val runtime = Runtime.getRuntime()
 
   def infoLine(file: String, f: String, ts: Long, nAlt: Int, nSuccess: Int, nInnap: Int, nDecomp: Int) : String = {
-    "║ %-30s %-24s %3d %10s %10s ms ║".format(
+    "║ %-30s %-24s %3d %10s %10s ms %10d Mb ║".format(
       file,
       f,
       nAlt,
       nSuccess+"/"+nInnap+"/"+nDecomp,
-      ts)
+      ts,
+      (runtime.totalMemory()-runtime.freeMemory())/(1024*1024))
   }
 
   println(infoHeader)
@@ -71,29 +75,27 @@ object Benchmarks extends App {
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
-  val ctx = leon.Main.processOptions(new DefaultReporter, others ++ newOptions)
+  val ctx = leon.Main.processOptions(others ++ newOptions)
 
   for (file <- ctx.files) {
+    Thread.sleep(10*1000);
+
     val innerCtx = ctx.copy(files = List(file))
 
-    val opts = SynthesizerOptions()
+    val opts = SynthesisOptions()
 
     val pipeline = leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
     val (program, results) = pipeline.run(innerCtx)(file.getPath :: Nil)
 
-    val solver = new FairZ3Solver(ctx.copy(reporter = new SilentReporter))
-    solver.setProgram(program)
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val sctx = SynthesisContext(
-        context = ctx,
-        options = opts,
+        context         = ctx,
+        options         = opts,
         functionContext = Some(f),
-        program = program,
-        solver = solver,
-        reporter = new DefaultReporter,
-        shouldStop = new java.util.concurrent.atomic.AtomicBoolean
+        program         = program,
+        reporter        = ctx.reporter
       )
 
       val ts = System.currentTimeMillis
@@ -135,13 +137,13 @@ object Benchmarks extends App {
 
   println
 
-  val infoHeader2 : String = "  ┌────────────┐\n" +
-                             "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
-                             "║ └────────────┘" + (" " * 71) + "║"
+  //val infoHeader2 : String = "  ┌────────────┐\n" +
+  //                           "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
+  //                           "║ └────────────┘" + (" " * 71) + "║"
 
-  println(infoHeader2)
-  for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
-    println("║ %-70s %10s ms ║".format(name, sw.getMillis))
-  }
-  println(infoFooter)
+  //println(infoHeader2)
+  //for ((name, sw) <- TimerCollections.getAll.toSeq.sortBy(_._1)) {
+  //  println("║ %-70s %10s ms ║".format(name, sw.getMillis))
+  //}
+  //println(infoFooter)
 }

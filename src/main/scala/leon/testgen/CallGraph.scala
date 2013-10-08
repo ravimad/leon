@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.testgen
 
 import leon.purescala.Definitions._
@@ -7,7 +9,9 @@ import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
-import leon.solvers.z3.FairZ3Solver
+
+import leon.solvers.z3._
+import leon.solvers._
 
 class CallGraph(val program: Program) {
 
@@ -109,9 +113,9 @@ class CallGraph(val program: Program) {
         //  callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
         //  rec(e, List(), newPoint)
         //}
-        case IfExpr(cond, then, elze) => {
+        case IfExpr(cond, thenn, elze) => {
           rec(cond, path, startingPoint)
-          rec(then, cond :: path, startingPoint) 
+          rec(thenn, cond :: path, startingPoint) 
           rec(elze, Not(cond) :: path, startingPoint)
         }
         case n@NAryOperator(args, _) => {
@@ -164,7 +168,7 @@ class CallGraph(val program: Program) {
     fd.annotations.exists(_ == "main")
   }
 
-  def findAllPaths(z3Solver: FairZ3Solver): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def findAllPaths(z3Solverf: SolverFactory[Solver]): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     val waypoints: Set[ProgramPoint] = programPoints.filter{ case ExpressionPoint(Waypoint(_, _), _) => true case _ => false }
     val sortedWaypoints: Seq[ProgramPoint] = waypoints.toSeq.sortWith((p1, p2) => {
       val (ExpressionPoint(Waypoint(i1, _), _), ExpressionPoint(Waypoint(i2, _), _)) = (p1, p2)
@@ -179,7 +183,7 @@ class CallGraph(val program: Program) {
     if(sortedWaypoints.size == 0) {
       findSimplePaths(mainPoint.get)
     } else {
-      visitAllWaypoints(mainPoint.get :: sortedWaypoints.toList, z3Solver) match {
+      visitAllWaypoints(mainPoint.get :: sortedWaypoints.toList, z3Solverf) match {
         case None => Set()
         case Some(p) => Set(p)
       }
@@ -190,7 +194,7 @@ class CallGraph(val program: Program) {
     }
   }
 
-  def visitAllWaypoints(waypoints: List[ProgramPoint], z3Solver: FairZ3Solver): Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def visitAllWaypoints(waypoints: List[ProgramPoint], z3Solverf: SolverFactory[Solver]): Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     def rec(head: ProgramPoint, tail: List[ProgramPoint], path: Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]): 
       Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
         tail match {
@@ -200,12 +204,10 @@ class CallGraph(val program: Program) {
             var completePath: Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = None
             allPaths.find(intermediatePath => {
               val pc = pathConstraint(path ++ intermediatePath)
-              z3Solver.init()
-              z3Solver.restartZ3
 
               var testcase: Option[Map[Identifier, Expr]] = None
                 
-              val (solverResult, model) = z3Solver.solveSAT(pc)
+              val (solverResult, model) = SimpleSolverAPI(z3Solverf).solveSAT(pc)
               solverResult match {
                 case None => {
                   false

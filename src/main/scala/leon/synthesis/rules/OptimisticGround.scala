@@ -1,20 +1,23 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
+import solvers._
+
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
-      val res = new RuleInstantiation(p, this, SolutionBuilder.none) {
+      val res = new RuleInstantiation(p, this, SolutionBuilder.none, this.name) {
         def apply(sctx: SynthesisContext) = {
 
-          val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+          val solver = SimpleSolverAPI(sctx.fastSolverFactory) // Optimistic ground is given a simple solver (uninterpreted)
 
           val xss = p.xs.toSet
           val ass = p.as.toSet

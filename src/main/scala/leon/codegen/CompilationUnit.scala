@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package codegen
 
@@ -20,7 +22,7 @@ import CodeGeneration._
 
 class CompilationUnit(val program: Program, val classes: Map[Definition, ClassFile], implicit val env: CompilationEnvironment) {
 
-  private val jvmClassToDef = classes.map {
+  val jvmClassToDef = classes.map {
     case (d, cf) => cf.className -> d
   }.toMap
 
@@ -39,6 +41,13 @@ class CompilationUnit(val program: Program, val classes: Map[Definition, ClassFi
         assert(!conss.isEmpty)
         (ccd -> conss.last)
     }).toMap
+  }
+
+  private lazy val tupleConstructor: Constructor[_] = {
+    val tc = loader.loadClass("leon.codegen.runtime.Tuple")
+    val conss = tc.getConstructors().sortBy(_.getParameterTypes().length)
+    assert(!conss.isEmpty)
+    conss.last
   }
 
   private def writeClassFiles() {
@@ -62,6 +71,9 @@ class CompilationUnit(val program: Program, val classes: Map[Definition, ClassFi
 
     case BooleanLiteral(v) =>
       new java.lang.Boolean(v)
+
+    case Tuple(elems) =>
+      tupleConstructor.newInstance(elems.map(valueToJVM).toArray).asInstanceOf[AnyRef]
 
     case CaseClass(ccd, args) =>
       val cons = caseClassConstructors(ccd)
@@ -157,7 +169,7 @@ class CompilationUnit(val program: Program, val classes: Map[Definition, ClassFi
       case Int32Type | BooleanType =>
         ch << IRETURN
 
-      case UnitType | TupleType(_)  | SetType(_) | MapType(_, _) | AbstractClassType(_) | CaseClassType(_) | ArrayType(_) =>
+      case UnitType | _: TupleType  | _: SetType | _: MapType | _: AbstractClassType | _: CaseClassType | _: ArrayType =>
         ch << ARETURN
 
       case other =>
@@ -175,24 +187,24 @@ class CompilationUnit(val program: Program, val classes: Map[Definition, ClassFi
 }
 
 object CompilationUnit {
-  def compileProgram(p: Program): Option[CompilationUnit] = {
-    implicit val env = CompilationEnvironment.fromProgram(p)
+  def compileProgram(p: Program, compileContracts: Boolean = true): Option[CompilationUnit] = {
+    implicit val env = CompilationEnvironment.fromProgram(p, compileContracts)
 
     var classes = Map[Definition, ClassFile]()
 
     for((parent,children) <- p.algebraicDataTypes) {
-      classes += parent -> compileAbstractClassDef(p, parent)
+      classes += parent -> compileAbstractClassDef(parent)
 
       for (c <- children) {
-        classes += c -> compileCaseClassDef(p, c)
+        classes += c -> compileCaseClassDef(c)
       }
     }
 
     for(single <- p.singleCaseClasses) {
-      classes += single -> compileCaseClassDef(p, single)
+      classes += single -> compileCaseClassDef(single)
     }
 
-    val mainClassName = defToJVMName(p, p.mainObject)
+    val mainClassName = defToJVMName(p.mainObject)
     val cf = new ClassFile(mainClassName, None)
 
     classes += p.mainObject -> cf

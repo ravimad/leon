@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.xlang
 
 import leon.TransformationPhase
@@ -23,9 +25,9 @@ object EpsilonElimination extends TransformationPhase {
           val freshName = FreshIdentifier("epsilon")
           val newFunDef = new FunDef(freshName, eps.getType, Seq())
           val epsilonVar = EpsilonVariable(eps.posIntInfo)
-          val resultVar = ResultVariable().setType(eps.getType)
-          val postcondition = replace(Map(epsilonVar -> resultVar), pred)
-          newFunDef.postcondition = Some(postcondition)
+          val resId     = FreshIdentifier("res").setType(eps.getType)
+          val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)
+          newFunDef.postcondition = Some((resId, postcondition))
           Some(LetDef(newFunDef, FunctionInvocation(newFunDef, Seq())))
         }
         case _ => None

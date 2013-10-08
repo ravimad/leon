@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package heuristics
@@ -36,7 +38,7 @@ case object SelectiveInlining extends Rule("Sel. Inlining") with Heuristic {
 
       val sub = p.copy(phi = And(newExprs))
 
-      Some(HeuristicInstantiation(p, this, List(sub), forward))
+      Some(HeuristicInstantiation(p, this, List(sub), forward, this.name))
     } else {
       None
     }

@@ -1,9 +1,10 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 
 import purescala.Trees._
 import purescala.TreeOps._
-import leon.xlang.Trees.LetDef
 
 import synthesis.search.Cost
 

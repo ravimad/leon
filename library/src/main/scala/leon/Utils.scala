@@ -1,4 +1,8 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
+
+import  scala.language.implicitConversions
 
 object Utils {
   sealed class IsValid(val property : Boolean) {

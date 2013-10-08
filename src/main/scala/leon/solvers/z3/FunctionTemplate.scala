@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package solvers.z3
 
@@ -58,7 +60,9 @@ class FunctionTemplate private(
     zippedFunDefArgs
   }
 
-  val asZ3Clauses: Seq[Z3AST] = asClauses.map(solver.toZ3Formula(_, idToZ3Ids).get)
+  val asZ3Clauses: Seq[Z3AST] = asClauses.map {
+    solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
+  }
 
   private val blockers : Map[Identifier,Set[FunctionInvocation]] = {
     val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
@@ -92,7 +96,7 @@ class FunctionTemplate private(
         val leonArgs = ga.map(_.get).force
         val invocation = FunctionInvocation(funDef, leonArgs)
         solver.getEvaluator.eval(invocation) match {
-          case EvaluationSuccessful(result) =>
+          case EvaluationResults.Successful(result) =>
             val z3Invocation = z3.mkApp(solver.functionDefToDecl(funDef), args: _*)
             val z3Value      = solver.toZ3Formula(result).get
             val asZ3         = z3.mkEq(z3Invocation, z3Value)
@@ -199,6 +203,23 @@ object FunctionTemplate {
           val rb = rec(pathVar, replace(Map(Variable(i) -> Variable(newExpr)), b))
           rb
 
+        case l @ LetTuple(is, e, b) =>
+          val tuple : Identifier = FreshIdentifier("t", true).setType(TupleType(is.map(_.getType)))
+          exprVars += tuple
+          val re = rec(pathVar, e)
+          storeGuarded(pathVar, Equals(Variable(tuple), re))
+
+          val mapping = for ((id, i) <- is.zipWithIndex) yield {
+            val newId = FreshIdentifier("ti", true).setType(id.getType)
+            exprVars += newId
+            storeGuarded(pathVar, Equals(Variable(newId), TupleSelect(Variable(tuple), i+1)))
+
+            (Variable(id) -> Variable(newId))
+          }
+
+          val rb = rec(pathVar, replace(mapping.toMap, b))
+          rb
+
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
 
         case i @ Implies(lhs, rhs) =>
@@ -242,8 +263,8 @@ object FunctionTemplate {
             Or(parts.map(rec(pathVar, _)))
           }
 
-        case i @ IfExpr(cond, then, elze) => {
-          if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
+        case i @ IfExpr(cond, thenn, elze) => {
+          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
@@ -256,7 +277,7 @@ object FunctionTemplate {
             exprVars += newExpr
 
             val crec = rec(pathVar, cond)
-            val trec = rec(newBool1, then)
+            val trec = rec(newBool1, thenn)
             val erec = rec(newBool2, elze)
 
             storeGuarded(pathVar, Or(Variable(newBool1), Variable(newBool2)))
@@ -271,7 +292,18 @@ object FunctionTemplate {
           }
         }
 
-        case c @ Choose(_, _) => Variable(FreshIdentifier("choose", true).setType(c.getType))
+        case c @ Choose(ids, cond) =>
+          val cid = FreshIdentifier("choose", true).setType(c.getType)
+          exprVars += cid
+
+          val m: Map[Expr, Expr] = if (ids.size == 1) {
+            Map(Variable(ids.head) -> Variable(cid))
+          } else {
+            ids.zipWithIndex.map{ case (id, i) => Variable(id) -> TupleSelect(Variable(cid), i+1) }.toMap
+          }
+
+          storeGuarded(pathVar, replace(m, cond))
+          Variable(cid)
 
         case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, a))).setType(n.getType)
         case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, a1), rec(pathVar, a2)).setType(b.getType)
@@ -312,19 +344,21 @@ object FunctionTemplate {
     }
 
     // Now the postcondition.
-    if (funDef.hasPostcondition) {
-      val post0 : Expr = matchToIfThenElse(funDef.getPostcondition)
-      val post : Expr = replace(Map(ResultVariable() -> invocation), post0)
+    funDef.postcondition match {
+      case Some((id, post)) =>
+        val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
 
-      val postHolds : Expr =
-        if(funDef.hasPrecondition) {
-          Implies(prec.get, post)
-        } else {
-          post
-        }
+        val postHolds : Expr =
+          if(funDef.hasPrecondition) {
+            Implies(prec.get, newPost)
+          } else {
+            newPost
+          }
 
-      val finalPred2 : Expr = rec(activatingBool,  postHolds)
-      storeGuarded(activatingBool, finalPred2)
+        val finalPred2 : Expr = rec(activatingBool,  postHolds)
+        storeGuarded(activatingBool, finalPred2)
+      case None =>
+
     }
 
     new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),

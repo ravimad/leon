@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -10,13 +12,13 @@ case object CaseSplit extends Rule("Case-Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(os) =>
-        List(split(os, p))
+        List(split(os, p, "Split top-level Or"))
       case _ =>
         Nil
     }
   }
 
-  def split(alts: Seq[Expr], p: Problem): RuleInstantiation = {
+  def split(alts: Seq[Expr], p: Problem, description: String): RuleInstantiation = {
     val subs = alts.map(a => Problem(p.as, p.pc, a, p.xs)).toList
 
     val onSuccess: List[Solution] => Option[Solution] = {
@@ -34,7 +36,7 @@ case object CaseSplit extends Rule("Case-Split") {
         None
     }
 
-    RuleInstantiation.immediateDecomp(p, this, subs, onSuccess)
+    RuleInstantiation.immediateDecomp(p, this, subs, onSuccess, description)
   }
 }
 

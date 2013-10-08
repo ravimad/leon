@@ -1,8 +1,16 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.codegen.runtime;
 
 import java.util.Arrays;
 
 public final class Tuple {
+  private int __read = 0;
+
+  public final int __getRead() {
+    return __read;
+  }
+
   private final Object[] elements;
 
   // You may think that using varargs here would show less of the internals,
@@ -16,6 +24,8 @@ public final class Tuple {
     if(index < 0 || index >= this.elements.length) {
         throw new IllegalArgumentException("Invalid tuple index : " + index);
     }
+    __read = (1 << (index)) | __read;
+
     return this.elements[index];
   }
 
@@ -30,8 +40,18 @@ public final class Tuple {
     Tuple other = (Tuple)that;
     if(other.getArity() != this.getArity()) return false;
     for(int i = 0; i < this.getArity(); i++) {
-        if(other.get(i) != this.get(i)) return false;
+        if(!other.get(i).equals(this.get(i))) return false;
     }
     return true; 
+  }
+
+  private int _hash = 0;
+  @Override
+  final public int hashCode() {
+    if(_hash != 0) return _hash;
+    int seed = (new String("Tuple" + getArity())).hashCode();
+    int h = LeonCodeGenRuntimeHashing.seqHash(elements, seed);
+    _hash = h;
+    return h;
   }
 }

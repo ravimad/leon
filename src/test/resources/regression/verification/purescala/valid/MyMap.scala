@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 import leon.Utils._
 
 object MyMap {
@@ -11,6 +13,6 @@ object MyMap {
     val m1 = Map[Int, Int]()
     val m2 = Map.empty[Int, Int]
     m1 == m2
-  } holds
+  }.holds
 
 }
