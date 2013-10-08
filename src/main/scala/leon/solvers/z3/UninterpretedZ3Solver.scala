@@ -124,8 +124,9 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     private var variables = Set[Identifier]()
 
     def assertCnstr(expression: Expr) {
-      variables ++= variablesOf(expression)      
-      solver.assertCnstr(toZ3Formula(expression).get)
+      variables ++= variablesOf(expression)
+      val z3formula = toZ3Formula(expression).get           
+      solver.assertCnstr(z3formula)
       //store the variable to expresion map
       //println("VariableASTMap after constraint generation: "+exprToZ3Id)
     }
