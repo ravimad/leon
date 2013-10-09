@@ -388,6 +388,22 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
+  
+  //The real constants allowed by the language are only rationals
+  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {
+    val value = (numerator,denominator)
+    val fixedType = RealType 
+  }
+  
+  //a warpper for real and interger literals (that are wholenumbers and not fractions)
+  object WholeNumber{
+    def apply(x: Int) : IntLiteral = IntLiteral(x)
+    def unapply(e : Expr) : Option[Int] = e match {
+      case IntLiteral(x) => Some(x)
+      case RealLiteral(x,1) => Some(x)
+      case _ => None
+    }
+  }
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
@@ -397,7 +413,7 @@ object Trees {
   case object UnitLiteral extends Literal[Unit] with FixedType {
     val fixedType = UnitType
     val value = ()
-  }
+  } 
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
