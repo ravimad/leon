@@ -397,7 +397,7 @@ object Trees {
   case object UnitLiteral extends Literal[Unit] with FixedType {
     val fixedType = UnitType
     val value = ()
-  } 
+  }
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
