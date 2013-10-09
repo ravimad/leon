@@ -1,9 +1,11 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package solvers.z3
 
 import z3.scala._
 
-import leon.solvers.Solver
+import leon.solvers._
 
 import purescala.Common._
 import purescala.Definitions._
@@ -19,7 +21,10 @@ import purescala.TypeTrees._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ3Solver with Z3ModelReconstruction {
+class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
+  extends AbstractZ3Solver
+     with Z3ModelReconstruction {
+
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
 
@@ -50,123 +55,57 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
   protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
   protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
 
-  override def solve(expression: Expr) : Option[Boolean] = solveSAT(Not(expression))._1.map(!_)
-  
-  def solveSATWithFunctionCalls(expression : Expr) : (Option[Boolean],Map[Identifier,Expr], Set[Expr]) = {
-    val solver = getNewSolver
-    solveWithFunctionCalls(expression,solver)
-  }
-  
-  def solveWithFunctionCalls(expression : Expr, solver: solvers.IncrementalSolver) : (Option[Boolean],Map[Identifier,Expr], Set[Expr]) = {
-    val emptyModel    = Map.empty[Identifier,Expr]        
-    solver.assertCnstr(expression)
-    val result = solver.check match {
-      case Some(false) => (Some(false), emptyModel, solver.getUnsatCore)
-      case Some(true) => (Some(true), solver.getModel, Set[Expr]())              
-      case _ => (None,emptyModel,Set[Expr]())
-    }
-    result
-  }
-  
-  /**
-   * This procedure just creates a solver(-cum-evaluator) with the given expression and does not solve for it
-   */
-  def getSATSolverEvaluator(expression : Expr) :SolverEvaluator = {
-    val solver = getNewSolver
-    solver.assertCnstr(expression)
-    solver
-  }
-  
-  /**
-   *   This procedure does not handle expressions with function calls (I dont know the reason :-( !!)
-   */  
-  override def solveSAT(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
-    val solver = getNewSolver
+  initZ3
 
-    val emptyModel    = Map.empty[Identifier,Expr]
-    val unknownResult = (None, emptyModel)
-    val unsatResult   = (Some(false), emptyModel)
+  val solver = z3.mkSolver
 
-    solver.assertCnstr(expression)
+  def push() {
+    solver.push
+  }
 
-    val result = solver.check match {
-      case Some(false) => unsatResult
-      case Some(true) => {
-        if(containsFunctionCalls(expression)) {
-          unknownResult
-        } else { 
-          (Some(true), solver.getModel)
+
+  def pop(lvl: Int = 1) {
+    solver.pop(lvl)
+  }
+
+  private var variables = Set[Identifier]()
+  private var containsFunCalls = false
+
+  def assertCnstr(expression: Expr) {
+    variables ++= variablesOf(expression)
+    containsFunCalls ||= containsFunctionCalls(expression)
+    solver.assertCnstr(toZ3Formula(expression).get)
+  }
+
+  def innerCheck: Option[Boolean] = {
+    solver.check match {
+      case Some(true) =>
+        if (containsFunCalls) {
+          None
+        } else {
+          Some(true)
         }
-      }
-      case _ => unknownResult
-    }
 
-    result
+      case r =>
+        r
+    }
   }
 
-  def getNewSolver = new SolverEvaluator {
-    initZ3
+  def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+    variables ++= assumptions.flatMap(variablesOf(_))
+    solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
+  }
 
-    val solver = z3.mkSolver
+  def getModel = {
+    modelToMap(solver.getModel, variables)
+  }
 
-    def push() {
-      solver.push
-    }
-
-    def halt() {
-      z3.interrupt
-    }
-
-    def pop(lvl: Int = 1) {
-      solver.pop(lvl)
-    }
-
-    private var variables = Set[Identifier]()
-
-    def assertCnstr(expression: Expr) {
-      variables ++= variablesOf(expression)
-      val z3formula = toZ3Formula(expression).get           
-      solver.assertCnstr(z3formula)
-      //store the variable to expresion map
-      //println("VariableASTMap after constraint generation: "+exprToZ3Id)
-    }
-
-    def check: Option[Boolean] = {
-      solver.check
-    }
-
-    def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-      variables ++= assumptions.flatMap(variablesOf(_))
-      solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
-    }
-
-    def getModel = {      
-      /*println("VariableASTMap before getting the model: "+exprToZ3Id)
-      println("Model: "+solver.getModel)*/
-      modelToMap(solver.getModel, variables)
-    }
-
-    def getUnsatCore = {
-      solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
-        case n @ Not(Variable(_)) => n
-        case v @ Variable(_) => v
-        case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
-      }).toSet
-    }
-    
-    var idMap: Map[Identifier,Z3AST] = null
-    def evalBoolExpr(expr: Expr) : Option[Boolean]= {
-      if(idMap == null)
-    	  idMap = exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
-      val ast = toZ3Formula(expr).get
-      
-      //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
-      val model = solver.getModel
-      val res = model.eval(ast, true)
-      model.context.getBoolValue(res.get)
-    }
-    
-    def getInternalModel : Z3Model = solver.getModel
+  def getUnsatCore = {
+    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+      case n @ Not(Variable(_)) => n
+      case v @ Variable(_) => v
+      case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+    }).toSet
   }
 }
   

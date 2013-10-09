@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package purescala
 
@@ -86,7 +88,16 @@ object Extractors {
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
-      case FiniteSet(args) => Some((args, FiniteSet))
+      case FiniteSet(args) =>
+        Some((args,
+              { newargs =>
+                if (newargs.isEmpty) {
+                  FiniteSet(Seq()).setType(expr.getType)
+                } else {
+                  FiniteSet(newargs)
+                }
+              }
+            ))
       case FiniteMap(args) => {
         val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
         val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
@@ -103,7 +114,7 @@ object Extractors {
       case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
       case Tuple(args) => Some((args, Tuple))
-      case IfExpr(cond, then, elze) => Some((Seq(cond, then, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
+      case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
       case MatchExpr(scrut, cases) =>
         Some((scrut +: cases.flatMap{ case SimpleCase(_, e) => Seq(e)
                                      case GuardedCase(_, e1, e2) => Seq(e1, e2) }
@@ -116,6 +127,60 @@ object Extractors {
 
            MatchExpr(es(0), newcases)
            }))
+      case LetDef(fd, body) =>
+        fd.body match {
+          case Some(b) =>
+            (fd.precondition, fd.postcondition) match {
+              case (None, None) =>
+                  Some((Seq(b, body), (as: Seq[Expr]) => {
+                    fd.body = Some(as(0))
+                    LetDef(fd, as(1))
+                  }))
+              case (Some(pre), None) =>
+                  Some((Seq(b, body, pre), (as: Seq[Expr]) => {
+                    fd.body = Some(as(0))
+                    fd.precondition = Some(as(2))
+                    LetDef(fd, as(1))
+                  }))
+              case (None, Some((pid, post))) =>
+                  Some((Seq(b, body, post), (as: Seq[Expr]) => {
+                    fd.body = Some(as(0))
+                    fd.postcondition = Some((pid, as(2)))
+                    LetDef(fd, as(1))
+                  }))
+              case (Some(pre), Some((pid, post))) =>
+                  Some((Seq(b, body, pre, post), (as: Seq[Expr]) => {
+                    fd.body = Some(as(0))
+                    fd.precondition = Some(as(2))
+                    fd.postcondition = Some((pid, as(3)))
+                    LetDef(fd, as(1))
+                  }))
+            }
+
+          case None => //case no body, we still need to handle remaining cases
+            (fd.precondition, fd.postcondition) match {
+              case (None, None) =>
+                  Some((Seq(body), (as: Seq[Expr]) => {
+                    LetDef(fd, as(0))
+                  }))
+              case (Some(pre), None) =>
+                  Some((Seq(body, pre), (as: Seq[Expr]) => {
+                    fd.precondition = Some(as(1))
+                    LetDef(fd, as(0))
+                  }))
+              case (None, Some((pid, post))) =>
+                  Some((Seq(body, post), (as: Seq[Expr]) => {
+                    fd.postcondition = Some((pid, as(1)))
+                    LetDef(fd, as(0))
+                  }))
+              case (Some(pre), Some((pid, post))) =>
+                  Some((Seq(body, pre, post), (as: Seq[Expr]) => {
+                    fd.precondition = Some(as(1))
+                    fd.postcondition = Some((pid, as(2)))
+                    LetDef(fd, as(0))
+                  }))
+            }
+        }
       case (ex: NAryExtractable) => ex.extract
       case _ => None
     }
@@ -205,7 +270,7 @@ object Extractors {
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Or(exprs) =>
-        Some(exprs.flatMap(unapply(_).flatten))
+        Some(exprs.flatMap(unapply(_)).flatten)
       case e =>
         Some(Seq(e))
     }
@@ -213,7 +278,7 @@ object Extractors {
   object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case And(exprs) =>
-        Some(exprs.flatMap(unapply(_).flatten))
+        Some(exprs.flatMap(unapply(_)).flatten)
       case e =>
         Some(Seq(e))
     }

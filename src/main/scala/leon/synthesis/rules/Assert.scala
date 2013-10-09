@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -23,7 +25,7 @@ case object Assert extends NormalizingRule("Assert") {
             List(RuleInstantiation.immediateDecomp(p, this, List(sub), {
               case Solution(pre, defs, term) :: Nil => Some(Solution(And(exprsA :+ pre), defs, term))
               case _ => None
-            }))
+            }, "Assert "+And(exprsA)))
           }
         } else {
           Nil

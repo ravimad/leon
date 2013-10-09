@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -10,6 +12,7 @@ import purescala.TreeNormalizations._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
+import evaluators._
 
 case object IntegerEquation extends Rule("Integer Equation") {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = if(!problem.xs.exists(_.getType == Int32Type)) Nil else {
@@ -19,6 +22,8 @@ case object IntegerEquation extends Rule("Integer Equation") {
     val (eqs, others) = exprs.partition(_.isInstanceOf[Equals])
     var candidates: Seq[Expr] = eqs
     var allOthers: Seq[Expr] = others
+
+    val evaluator = new DefaultEvaluator(sctx.context, sctx.program)
 
     var vars: Set[Identifier] = Set()
     var eqxs: List[Identifier] = List()
@@ -60,10 +65,10 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))
+          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
 
         } else {
-          val (eqPre0, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
+          val (eqPre0, eqWitness, freshxs) = elimVariable(evaluator, eqas, normalizedEq)
           val eqPre = eqPre0 match {
             case Equals(Modulo(_, IntLiteral(1)), _) => BooleanLiteral(true)
             case c => c
@@ -105,7 +110,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))
+          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
         }
       }
     }

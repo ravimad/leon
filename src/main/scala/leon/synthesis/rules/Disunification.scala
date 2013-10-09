@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -26,7 +28,7 @@ object Disunification {
       if (!toRemove.isEmpty) {
         val sub = p.copy(phi = Or((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
+        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
       } else {
         Nil
       }

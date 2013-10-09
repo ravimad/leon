@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
@@ -20,7 +22,7 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
           None
       }
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess, this.name))
     } else {
       Nil
     }

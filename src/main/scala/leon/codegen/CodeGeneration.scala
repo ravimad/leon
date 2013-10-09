@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package codegen
 
@@ -17,14 +19,15 @@ object CodeGeneration {
   private val BoxedIntClass  = "java/lang/Integer"
   private val BoxedBoolClass = "java/lang/Boolean"
 
-  private val TupleClass     = "leon/codegen/runtime/Tuple"
-  private val SetClass       = "leon/codegen/runtime/Set"
-  private val MapClass       = "leon/codegen/runtime/Map"
-  private val CaseClassClass = "leon/codegen/runtime/CaseClass"
-  private val ErrorClass     = "leon/codegen/runtime/LeonCodeGenRuntimeException"
+  private val TupleClass      = "leon/codegen/runtime/Tuple"
+  private val SetClass        = "leon/codegen/runtime/Set"
+  private val MapClass        = "leon/codegen/runtime/Map"
+  private val CaseClassClass  = "leon/codegen/runtime/CaseClass"
+  private val ErrorClass      = "leon/codegen/runtime/LeonCodeGenRuntimeException"
   private val ImpossibleEvaluationClass = "leon/codegen/runtime/LeonCodeGenEvaluationException"
+  private val HashingClass   = "leon/codegen/runtime/LeonCodeGenRuntimeHashing"
 
-  def defToJVMName(p : Program, d : Definition) : String = "Leon$CodeGen$" + d.id.uniqueName
+  def defToJVMName(d : Definition)(implicit env : CompilationEnvironment) : String = "Leon$CodeGen$" + d.id.uniqueName
 
   def typeToJVM(tpe : TypeTree)(implicit env : CompilationEnvironment) : String = tpe match {
     case Int32Type => "I"
@@ -56,7 +59,22 @@ object CodeGeneration {
   def compileFunDef(funDef : FunDef, ch : CodeHandler)(implicit env : CompilationEnvironment) {
     val newMapping = funDef.args.map(_.id).zipWithIndex.toMap
 
-    val exprToCompile = purescala.TreeOps.matchToIfThenElse(funDef.getBody)
+    val body = funDef.body.getOrElse(throw CompilationException("Can't compile a FunDef without body"))
+
+    val bodyWithPre = if(funDef.hasPrecondition && env.compileContracts) {
+      IfExpr(funDef.precondition.get, body, Error("Precondition failed"))
+    } else {
+      body
+    }
+
+    val bodyWithPost = if(funDef.hasPostcondition && env.compileContracts) {
+      val Some((id, post)) = funDef.postcondition
+      Let(id, bodyWithPre, IfExpr(post, Variable(id), Error("Postcondition failed")) )
+    } else {
+      bodyWithPre
+    }
+
+    val exprToCompile = purescala.TreeOps.matchToIfThenElse(bodyWithPost)
 
     mkExpr(exprToCompile, ch)(env.withVars(newMapping))
 
@@ -147,7 +165,7 @@ object CodeGeneration {
           throw CompilationException("Unknown class : " + ccd.id)
         }
         ch << CheckCast(ccName)
-        ch << GetField(ccName, sid.name, typeToJVM(sid.getType))
+        instrumentedGetField(ch, ccd, sid)
 
       // Tuples (note that instanceOf checks are in mkBranch)
       case Tuple(es) =>
@@ -398,10 +416,10 @@ object CodeGeneration {
     }
   }
 
-  private[codegen] def mkBranch(cond : Expr, then : String, elze : String, ch : CodeHandler, canDelegateToMkExpr : Boolean = true)(implicit env : CompilationEnvironment) {
+  private[codegen] def mkBranch(cond : Expr, thenn : String, elze : String, ch : CodeHandler, canDelegateToMkExpr : Boolean = true)(implicit env : CompilationEnvironment) {
     cond match {
       case BooleanLiteral(true) =>
-        ch << Goto(then)
+        ch << Goto(thenn)
 
       case BooleanLiteral(false) =>
         ch << Goto(elze)
@@ -410,63 +428,63 @@ object CodeGeneration {
         val fl = ch.getFreshLabel("andnext")
         mkBranch(es.head, fl, elze, ch)
         ch << Label(fl)
-        mkBranch(And(es.tail), then, elze, ch)
+        mkBranch(And(es.tail), thenn, elze, ch)
 
       case Or(es) =>
         val fl = ch.getFreshLabel("ornext")
-        mkBranch(es.head, then, fl, ch)
+        mkBranch(es.head, thenn, fl, ch)
         ch << Label(fl)
-        mkBranch(Or(es.tail), then, elze, ch) 
+        mkBranch(Or(es.tail), thenn, elze, ch) 
 
       case Implies(l, r) =>
-        mkBranch(Or(Not(l), r), then, elze, ch)
+        mkBranch(Or(Not(l), r), thenn, elze, ch)
 
       case Not(c) =>
-        mkBranch(c, elze, then, ch)
+        mkBranch(c, elze, thenn, ch)
 
       case Variable(b) =>
-        ch << ILoad(slotFor(b)) << IfEq(elze) << Goto(then)
+        ch << ILoad(slotFor(b)) << IfEq(elze) << Goto(thenn)
 
       case Equals(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
         l.getType match {
           case Int32Type | BooleanType | UnitType =>
-            ch << If_ICmpEq(then) << Goto(elze)
+            ch << If_ICmpEq(thenn) << Goto(elze)
 
           case _ =>
             ch << InvokeVirtual("java/lang/Object", "equals", "(Ljava/lang/Object;)Z")
-            ch << IfEq(elze) << Goto(then)
+            ch << IfEq(elze) << Goto(thenn)
         }
 
       case Iff(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
-        ch << If_ICmpEq(then) << Goto(elze)
+        ch << If_ICmpEq(thenn) << Goto(elze)
 
       case LessThan(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
-        ch << If_ICmpLt(then) << Goto(elze) 
+        ch << If_ICmpLt(thenn) << Goto(elze) 
 
       case GreaterThan(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
-        ch << If_ICmpGt(then) << Goto(elze) 
+        ch << If_ICmpGt(thenn) << Goto(elze) 
 
       case LessEquals(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
-        ch << If_ICmpLe(then) << Goto(elze) 
+        ch << If_ICmpLe(thenn) << Goto(elze) 
 
       case GreaterEquals(l,r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
-        ch << If_ICmpGe(then) << Goto(elze) 
+        ch << If_ICmpGe(thenn) << Goto(elze) 
 
       case other if canDelegateToMkExpr =>
         mkExpr(other, ch, canDelegateToMkBranch = false)
-        ch << IfEq(elze) << Goto(then)
+        ch << IfEq(elze) << Goto(thenn)
 
       case other => throw CompilationException("Unsupported branching expr. : " + other) 
     }
@@ -478,8 +496,8 @@ object CodeGeneration {
     }
   }
 
-  def compileAbstractClassDef(p : Program, acd : AbstractClassDef)(implicit env : CompilationEnvironment) : ClassFile = {
-    val cName = defToJVMName(p, acd)
+  def compileAbstractClassDef(acd : AbstractClassDef)(implicit env : CompilationEnvironment) : ClassFile = {
+    val cName = defToJVMName(acd)
 
     val cf  = new ClassFile(cName, None)
     cf.setFlags((
@@ -495,10 +513,36 @@ object CodeGeneration {
     cf
   }
 
-  def compileCaseClassDef(p : Program, ccd : CaseClassDef)(implicit env : CompilationEnvironment) : ClassFile = {
+  var doInstrument = true
 
-    val cName = defToJVMName(p, ccd)
-    val pName = ccd.parent.map(parent => defToJVMName(p, parent))
+  /**
+   * Instrument read operations
+   */
+  val instrumentedField = "__read"
+
+  def instrumentedGetField(ch: CodeHandler, ccd: CaseClassDef, id: Identifier)(implicit env : CompilationEnvironment): Unit = {
+    ccd.fields.zipWithIndex.find(_._1.id == id) match {
+      case Some((f, i)) =>
+        val cName = defToJVMName(ccd)
+        if (doInstrument) {
+          ch << DUP << DUP
+          ch << GetField(cName, instrumentedField, "I")
+          ch << Ldc(1)
+          ch << Ldc(i)
+          ch << ISHL
+          ch << IOR
+          ch << PutField(cName, instrumentedField, "I")
+        }
+        ch << GetField(cName, f.id.name, typeToJVM(f.tpe))
+      case None =>
+        throw CompilationException("Unknown field: "+ccd.id.name+"."+id)
+    }
+  }
+
+  def compileCaseClassDef(ccd : CaseClassDef)(implicit env : CompilationEnvironment) : ClassFile = {
+
+    val cName = defToJVMName(ccd)
+    val pName = ccd.parent.map(parent => defToJVMName(parent))
 
     val cf = new ClassFile(cName, pName)
     cf.setFlags((
@@ -511,11 +555,12 @@ object CodeGeneration {
       cf.addInterface(CaseClassClass)
     }
 
+    val namesTypes = ccd.fields.map { vd => (vd.id.name, typeToJVM(vd.tpe)) }
+
     // definition of the constructor
-    if(ccd.fields.isEmpty) {
+    if(!doInstrument && ccd.fields.isEmpty) {
       cf.addDefaultConstructor
     } else {
-      val namesTypes = ccd.fields.map { vd => (vd.id.name, typeToJVM(vd.tpe)) }
 
       for((nme, jvmt) <- namesTypes) {
         val fh = cf.addField(jvmt, nme)
@@ -525,10 +570,21 @@ object CodeGeneration {
         ).asInstanceOf[U2])
       }
 
+      if (doInstrument) {
+        val fh = cf.addField("I", instrumentedField)
+        fh.setFlags(FIELD_ACC_PUBLIC)
+      }
+
       val cch = cf.addConstructor(namesTypes.map(_._2).toList).codeHandler
 
       cch << ALoad(0)
       cch << InvokeSpecial(pName.getOrElse("java/lang/Object"), constructorName, "()V")
+
+      if (doInstrument) {
+        cch << ALoad(0)
+        cch << Ldc(0)
+        cch << PutField(cName, instrumentedField, "I")
+      }
 
       var c = 1
       for((nme, jvmt) <- namesTypes) {
@@ -542,6 +598,20 @@ object CodeGeneration {
       }
       cch << RETURN
       cch.freeze
+    }
+
+    locally {
+      val pnm = cf.addMethod("I", "__getRead")
+      pnm.setFlags((
+        METHOD_ACC_PUBLIC |
+        METHOD_ACC_FINAL
+      ).asInstanceOf[U2])
+
+      val pnch = pnm.codeHandler
+
+      pnch << ALoad(0) << GetField(cName, instrumentedField, "I") << IRETURN
+
+      pnch.freeze
     }
 
     locally {
@@ -574,7 +644,7 @@ object CodeGeneration {
         pech << DUP
         pech << Ldc(i)
         pech << ALoad(0)
-        pech << GetField(cName, f.id.name, typeToJVM(f.tpe))
+        instrumentedGetField(pech, ccd, f.id)
         mkBox(f.tpe, pech)
         pech << AASTORE
       }
@@ -607,13 +677,13 @@ object CodeGeneration {
       if(!ccd.fields.isEmpty) {
         ech << ALoad(1) << CheckCast(cName) << AStore(castSlot)
 
-        val namesTypes = ccd.fields.map { vd => (vd.id.name, typeToJVM(vd.tpe)) }
-        
-        for((nme, jvmt) <- namesTypes) {
-          ech << ALoad(0) << GetField(cName, nme, jvmt)
-          ech << ALoad(castSlot) << GetField(cName, nme, jvmt)
+        for(vd <- ccd.fields) {
+          ech << ALoad(0)
+          instrumentedGetField(ech, ccd, vd.id)
+          ech << ALoad(castSlot)
+          instrumentedGetField(ech, ccd, vd.id)
 
-          jvmt match {
+          typeToJVM(vd.id.getType) match {
             case "I" | "Z" =>
               ech << If_ICmpNe(notEq)
 
@@ -629,6 +699,8 @@ object CodeGeneration {
 
     // definition of hashcode
     locally {
+      val hashFieldName = "$leon$hashCode"
+      cf.addField("I", hashFieldName).setFlags((FIELD_ACC_PRIVATE).asInstanceOf[U2])
       val hmh = cf.addMethod("I", "hashCode", "")
       hmh.setFlags((
         METHOD_ACC_PUBLIC |
@@ -636,8 +708,20 @@ object CodeGeneration {
       ).asInstanceOf[U2])
 
       val hch = hmh.codeHandler
-      // TODO FIXME. Look at Scala for inspiration.
-      hch << Ldc(42) << IRETURN
+      
+      val wasNotCached = hch.getFreshLabel("wasNotCached")
+
+      hch << ALoad(0) << GetField(cName, hashFieldName, "I") << DUP
+      hch << IfEq(wasNotCached)
+      hch << IRETURN
+      hch << Label(wasNotCached) << POP
+      hch << ALoad(0) << InvokeVirtual(cName, "productElements", "()[Ljava/lang/Object;")
+      hch << ALoad(0) << InvokeVirtual(cName, "productName", "()Ljava/lang/String;")
+      hch << InvokeVirtual("java/lang/String", "hashCode", "()I")
+      hch << InvokeStatic(HashingClass, "seqHash", "([Ljava/lang/Object;I)I") << DUP
+      hch << ALoad(0) << SWAP << PutField(cName, hashFieldName, "I") 
+      hch << IRETURN
+      
       hch.freeze
     }
 

@@ -1,0 +1,20 @@
+language: scala
+
+before_script:
+    - sbt script
+    - source setupenv
+
+scala:
+    - 2.10.2
+jdk:
+    - oraclejdk7
+
+branches:
+    only:
+        - master
+
+notifications:
+    email:
+        - ekneuss@gmail.com
+        - philippe.suter@gmail.com
+    irc: "chat.freenode.net#epfl-lara"

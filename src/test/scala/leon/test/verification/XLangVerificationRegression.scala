@@ -1,16 +1,14 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package test
 package verification
 
 import leon.verification.{AnalysisPhase,VerificationReport}
 
-import org.scalatest.FunSuite
-
 import java.io.File
 
-import TestUtils._
-
-class XLangVerificationRegression extends FunSuite {
+class XLangVerificationRegression extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1
@@ -19,7 +17,7 @@ class XLangVerificationRegression extends FunSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.plugin.ExtractionPhase andThen xlang.XlangAnalysisPhase
+    leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase andThen xlang.XlangAnalysisPhase
 
   private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()
@@ -37,16 +35,7 @@ class XLangVerificationRegression extends FunSuite {
 
       // println("testing " + displayName)
 
-      val ctx = LeonContext(
-        settings = Settings(
-          synthesis = false,
-          xlang     = false,
-          verify    = true
-        ),
-        //options = List(LeonFlagOption("feelinglucky")),
-        files = List(file),
-        reporter = new SilentReporter
-      )
+      val ctx = testContext.copy(files = List(file))
 
       val pipeline = mkPipeline
 

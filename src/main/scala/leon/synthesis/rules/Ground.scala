@@ -1,8 +1,10 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
+import solvers._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
@@ -12,11 +14,11 @@ case object Ground extends Rule("Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
 
-      val solver = new TimeoutSolver(sctx.solver, 1000L) // We give that 1s
+      val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 5000L))
 
       val tpe = TupleType(p.xs.map(_.getType))
 
-      solver.solveSAT(p.phi) match {
+      val result = solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
           val sol = Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe))
           Some(RuleInstantiation.immediateSuccess(p, this, sol))
@@ -26,6 +28,8 @@ case object Ground extends Rule("Ground") {
         case _ =>
           None
       }
+
+      result
     } else {
       None
     }

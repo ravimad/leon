@@ -1,17 +1,20 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
 import purescala.Trees._
 import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object EqualitySplit extends Rule("Eq. Split.") {
+import solvers._
+
+case object EqualitySplit extends Rule("Eq. Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+    val solver = SimpleSolverAPI(sctx.fastSolverFactory)
 
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
@@ -37,7 +40,6 @@ case object EqualitySplit extends Rule("Eq. Split.") {
       case _ => false
     }).values.flatten
 
-
     candidates.flatMap(_ match {
       case List(a1, a2) =>
 
@@ -51,7 +53,7 @@ case object EqualitySplit extends Rule("Eq. Split.") {
             None
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess))
+        Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Eq. Split on '"+a1+"' and '"+a2+"'"))
       case _ =>
         None
     })

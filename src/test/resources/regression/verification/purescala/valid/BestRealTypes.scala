@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 import leon.Utils._
 
 /** This benchmarks tests some potential issues with the legacy "bestRealType" function, which was original introduced to work around
@@ -21,5 +23,5 @@ object BestRealTypes {
   def somethingToProve(b : Boolean) : Boolean = {
     val (z1,z2) = zipWrap(Wrapper(boolToNum(b)), Wrapper(boolToNum(!b)))
     z1.num == Zero() || z2.num == Zero() 
-  } holds
+  }.holds
 }

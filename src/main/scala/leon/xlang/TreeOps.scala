@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package xlang
 
@@ -74,18 +76,4 @@ object TreeOps {
     }
     searchAndReplaceDFS(applyToTree)(expr)
   }
-
-  def containsLetDef(expr: Expr): Boolean = {
-    def convert(t : Expr) : Boolean = t match {
-      case (l : LetDef) => true
-      case _ => false
-    }
-    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
-    def compute(t : Expr, c : Boolean) = t match {
-      case (l : LetDef) => true
-      case _ => c
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
-
 }

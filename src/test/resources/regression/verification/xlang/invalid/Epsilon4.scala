@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 import leon.Utils._
 
 object Epsilon4 {
@@ -22,6 +24,6 @@ object Epsilon4 {
   }
 
 
-  def wrongProperty0(lst: MyList): Boolean = (size(toList(toSet(lst))) == size(lst)) holds
-  //def wrongProperty1(lst: MyList): Boolean = (toList(toSet(lst)) == lst) holds
+  def wrongProperty0(lst: MyList): Boolean = (size(toList(toSet(lst))) == size(lst)).holds
+  //def wrongProperty1(lst: MyList): Boolean = (toList(toSet(lst)) == lst).holds
 }

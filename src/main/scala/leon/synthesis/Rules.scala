@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon
 package synthesis
 
@@ -24,6 +26,7 @@ object Rules {
     CEGIS,
     Assert,
     DetupleOutput,
+    DetupleInput,
     ADTSplit,
     IntegerEquation,
     IntegerInequalities
@@ -49,36 +52,40 @@ object SolutionBuilder {
   }
 }
 
-abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder) {
+abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder, val description: String) {
   def apply(sctx: SynthesisContext): RuleApplicationResult
+
+  override def toString = description
 }
 
 sealed abstract class RuleApplicationResult
-case class RuleSuccess(solution: Solution)    extends RuleApplicationResult
-case class RuleDecomposed(sub: List[Problem]) extends RuleApplicationResult
-case object RuleApplicationImpossible         extends RuleApplicationResult
+case class RuleSuccess(solution: Solution, isTrusted: Boolean = true)  extends RuleApplicationResult
+case class RuleDecomposed(sub: List[Problem])                          extends RuleApplicationResult
+case object RuleApplicationImpossible                                  extends RuleApplicationResult
 
 object RuleInstantiation {
-  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution]) = {
+  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String) = {
     val subTypes = sub.map(p => TupleType(p.xs.map(_.getType)))
 
-    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess)) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess), description) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
   def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution))) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution)), "Solve with "+solution) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }
 }
 
 abstract class Rule(val name: String) {
-  def instantiateOn(scrx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation]
+  def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation]
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
+
+  implicit val debugSection = DebugSectionSynthesis
 
   val forward: List[Solution] => Option[Solution] = {
     case List(s) =>

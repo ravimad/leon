@@ -1,8 +1,10 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.synthesis.search
 
 class AndOrGraphPartialSolution[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
-                                S](val g: AndOrGraph[AT, OT, S], missing: AT => S) {
+                                S](val g: AndOrGraph[AT, OT, S], missing: AT => S, includeUntrusted: Boolean) {
 
 
   def getSolution: S = {
@@ -10,7 +12,7 @@ class AndOrGraphPartialSolution[AT <: AOAndTask[S],
   }
 
   def solveAnd(t: g.AndTree): S = {
-    if (t.isSolved) {
+    if (t.isSolved && (includeUntrusted || t.isTrustworthy)) {
       t.solution.get
     } else {
       t match {
@@ -23,7 +25,7 @@ class AndOrGraphPartialSolution[AT <: AOAndTask[S],
   }
 
   def solveOr(t: g.OrTree): S = {
-    if (t.isSolved) {
+    if (t.isSolved && (includeUntrusted || t.isTrustworthy)) {
       t.solution.get
     } else {
       t match {

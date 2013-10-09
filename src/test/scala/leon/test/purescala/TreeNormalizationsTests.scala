@@ -1,4 +1,7 @@
-package leon.test.purescala
+/* Copyright 2009-2013 EPFL, Lausanne */
+
+package leon.test
+package purescala
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
@@ -6,11 +9,8 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
-import leon.SilentReporter
 
-import org.scalatest.FunSuite
-
-class TreeNormalizationsTests extends FunSuite {
+class TreeNormalizationsTests extends LeonTestSuite {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x").setType(Int32Type)

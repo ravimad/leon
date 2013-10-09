@@ -7,6 +7,10 @@ target
 /leon
 /setupenv
 /leon-bench
+/.test-history
 
 # synthesis
 derivation*.dot
+
+# leon
+last.log
