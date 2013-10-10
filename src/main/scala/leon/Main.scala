@@ -196,7 +196,9 @@ object Main {
     val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen SubtypingPhase
 
     val pipeProcess: Pipeline[Program, Any] =
-      if (settings.synthesis) {
+      if (settings.inferInv) {
+        invariant.InferInvariantsPhase
+      } else if (settings.synthesis) {
         synthesis.SynthesisPhase
       } else if (settings.termination) {
         termination.TerminationPhase
@@ -204,9 +206,7 @@ object Main {
         xlang.XlangAnalysisPhase
       } else if (settings.verify) {
         verification.AnalysisPhase
-      } else if (settings.inferInv) {
-        invariant.InferInvariantsPhase
-      }
+      } 
       else {
         NoopPhase()
       }    
