@@ -238,11 +238,45 @@ trait CodeExtraction extends Extractors {
       currentFunDef = funDef
 
       val (body2, ensuring) = body match {
-        case ExEnsuredExpression(body2, resSym, contract) =>
-          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType)
+        case ExEnsuredExpression(body2, resSym, contract) => {
+          
+          //create a identifier for the result variable name
+          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType)          
+          
+          //here we need to check if the contract body has some templates
+          val (postcond, templateSyms, templateBody) = contract match {
+            case ExTemplateExpression(pcond, tempSyms, tempBody) =>
+              (pcond, tempSyms, Some(tempBody))            
+            case _ => (contract, List(), None)
+          }
+                    
           varSubsts(resSym) = (() => Variable(resId))
-          (body2, toPureScala(contract).map(r => (resId, r)))
-
+          val ppcond = toPureScala(postcond)
+          /*if(ppcond == None)
+              throw new IllegalStateException("Cannot extract postcondition as pure scala!!")*/
+          //ensCont = Some(c1)
+          
+          //if the template body exists then create a template expression          
+          if(templateBody.isDefined) {
+            
+            import leon.invariant._
+            
+            //create a template variable for each template symbol
+            val symmap = templateSyms.map((sym) => (sym,TemplateIdFactory.freshTemplateVar(sym.nameString))).toMap 
+            templateSyms.foreach((tempSym) => {              
+              varSubsts(tempSym) = (() => symmap(tempSym))              
+            })
+            //println("variables to be substituted: "+varSubsts.map((x) => (x._1,x._2())))
+            
+            val tempExpr = toPureScala(templateBody.get)
+            if(tempExpr == None)
+              throw new IllegalStateException("Cannot extract template as pure scala!!")
+            //println("Template expression : "+tempExpr)
+            UserTemplates.setTemplate(funDef,tempExpr.get)
+          }                    
+          
+          (body2, ppcond.map(r => (resId, r)))
+        }
         case ExHoldsExpression(body2) =>
           val resId = FreshIdentifier("res").setType(BooleanType)
           (body2, Some((resId, Variable(resId))))

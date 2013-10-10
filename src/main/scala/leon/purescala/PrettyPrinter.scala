@@ -289,7 +289,8 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
 
     case (expr: PrettyPrintable) => expr.printWith(lvl, this)
 
-    case _ => sb.append("Expr?")
+    //case _ => sb.append("Expr?")
+    case expr @ _ => sb.append(expr.toString)
   }
 
   // TYPE TREES
