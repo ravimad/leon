@@ -42,4 +42,7 @@ object Utils {
     def template(templateFunc : (Float,Float, Float)  => Boolean) : Boolean = postcond    
   }
   implicit def any2Template(postcond: Boolean): TemplateCons = new TemplateCons(postcond)
+  
+  //a counter that counts the number of time steps
+  def time: Int = throw new RuntimeException("Implementation not supported")
 }

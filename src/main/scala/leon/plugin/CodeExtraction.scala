@@ -424,6 +424,8 @@ trait CodeExtraction extends Extractors {
       var rest = tmpRest
 
       val res = current match {
+        case ExTimeVariable() => TimeVariable()
+        
         case ExArrayLiteral(tpe, args) =>
           FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)))
 

@@ -11,6 +11,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
   val name = "Extraction"
   val description = "Extraction of trees from the Scala Compiler"
+  val foundTime = false
 
   def run(ctx: LeonContext)(args: List[String]): Program = {
 
