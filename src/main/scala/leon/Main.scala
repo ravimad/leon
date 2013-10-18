@@ -3,6 +3,7 @@
 package leon
 
 import leon.utils._
+import leon.plugin.TimeStepsPhase
 
 object Main {
 
@@ -193,9 +194,9 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen SubtypingPhase
+    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase
 
-    val pipeProcess: Pipeline[Program, Any] =
+    val pipeProcess: Pipeline[Program, Any] =       
       if (settings.inferInv) {
         invariant.InferInvariantsPhase
       } else if (settings.synthesis) {
