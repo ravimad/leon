@@ -195,6 +195,8 @@ object Main {
     import purescala.Definitions.Program
 
     val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase
+      //plugin.ExtractionPhase andThen SubtypingPhase 
+      //plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase
 
     val pipeProcess: Pipeline[Program, Any] =       
       if (settings.inferInv) {
