@@ -2,7 +2,7 @@ package leon
 package invariant
 
 import z3.scala._
-import purescala.DataStructures._
+import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -90,16 +90,17 @@ class ConstraintTracker(rootFun : FunDef) {
             	node.uifs += Call(v,fi)
             }
             case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_))
-                 | Equals(Variable(_),CaseClass(_,_)) => {
+                 | Equals(Variable(_),CaseClass(_,_)) | Equals(Variable(_),TupleSelect(_,_)) 
+                 | Equals(Variable(_),Tuple(_)) => {
 
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
               //println("ADT constraint: "+ie)
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case _ => {
               val template = exprToTemplate(ie)
@@ -208,7 +209,7 @@ class ConstraintTracker(rootFun : FunDef) {
       case Times(e1, e2) => {
         e2 match {
           case Variable(_) => ;
-	  case ResultVariable() => ;
+          case ResultVariable() => ;
           case FunctionInvocation(_, _) => ;
           case _ => throw IllegalStateException("Multiplicand not a constraint variable: " + e2)
         }

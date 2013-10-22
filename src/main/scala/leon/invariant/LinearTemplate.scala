@@ -2,7 +2,7 @@ package leon
 package invariant
 
 import z3.scala._
-import purescala.DataStructures._
+import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -35,9 +35,9 @@ trait Template {
  * which could be any arbitrary expression with template variables as free variables
  * and vi's are variables.
  */
-class LinearTemplate(val oper: (Expr,Expr) => Expr,
+class LinearTemplate(oper: (Expr,Expr) => Expr,
     coeffTemp : Map[Expr, Expr],
-    val constTemp: Option[Expr]) extends Template {
+    constTemp: Option[Expr]) extends Template {
 
   val zero = IntLiteral(0)
 
@@ -136,7 +136,7 @@ class LinearTemplate(val oper: (Expr,Expr) => Expr,
 /**
  * class representing a linear constraint. This is a linear template wherein the coefficients are constants
  */
-class LinearConstraint(val opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], val constant: Option[Expr])
+class LinearConstraint(opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], constant: Option[Expr])
   extends LinearTemplate(opr, cMap, constant) {
   
   val coeffMap = {
@@ -152,7 +152,7 @@ class LinearConstraint(val opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], val 
   def expr : Expr = template
 }
 
-class BoolConstraint(val e : Expr) extends Template {
+class BoolConstraint(e : Expr) extends Template {
   val expr = {
     assert(e match{ 
       case Variable(_) => true
@@ -167,19 +167,68 @@ class BoolConstraint(val e : Expr) extends Template {
   }
 }
 
-class ADTConstraint(val e: Expr) extends Template {
+object ADTConstraints {
+  def createADTConstraints(e : Expr) : Seq[ADTConstraint] = e match {
+    
+      //is this a tuple or case class select ?
+      case Equals(Variable(_),TupleSelect(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_)) => {
+        val adtctr = new ADTConstraint(e, Some(e))        
+        Seq(adtctr)
+      }
+      //is this a tuple or case class def ?
+      case Equals(clsvar@Variable(id),CaseClass(cd,args)) => {        
+        //convert this to a class selector
+        val sels = cd.fieldsIds.zip(args).map((elem) => {
+          val (fld, arg) = elem
+          Equals(arg,CaseClassSelector(cd,clsvar,fld))
+        })
+        sels.map((sel) => {
+          val adtctr = new ADTConstraint(e, Some(sel))          
+          adtctr
+        })        
+      }
+      case Equals(tpvar@Variable(_),Tuple(args)) => {
+        var i = 0
+        val sels = args.map((arg) => {
+          i += 1
+          Equals(arg,TupleSelect(tpvar,i))
+        })
+        sels.map((sel) => {
+          val adtctr = new ADTConstraint(e, Some(sel))          
+          adtctr
+        })  
+      }         
+      //is this an instanceOf ?
+      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => {
+        val adtctr = new ADTConstraint(e, None, Some(e))        
+        Seq(adtctr)
+      }
+      //equals and disequalities betweeen variables
+      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+        val adtctr = new ADTConstraint(e, None, None, Some(e))        
+        Seq(adtctr)
+      }
+      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+        val adtctr = new ADTConstraint(e, None, None, Some(e))        
+        Seq(adtctr)
+      }
+      case _ => {        
+        throw IllegalStateException("Expression not an ADT constraint: "+ e)
+      }
+    }   
+}
 
-  val expr = {
-    assert(e match {
-      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => true
-      case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => true
-      case Equals(v@Variable(_),cc@CaseClass(_,_)) => true
-      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
-      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
-      case _ => false
-    })
-    e
-  }
+class ADTConstraint(val expr: Expr, 
+    val sel: Option[Expr] = None, 
+    val inst : Option[Expr] = None, 
+    val comp : Option[Expr] = None ) extends Template {
+
+ /* //these will be set by the companinon classes
+  val expr : Expr = { e }
+  var sel : Option[Expr] = None
+  
+  var cls : Option[Expr] = None
+  */
 
   override def toString(): String = {
     expr.toString
