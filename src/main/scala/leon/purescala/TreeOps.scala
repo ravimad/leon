@@ -331,6 +331,11 @@ object TreeOps {
         val newID = FreshIdentifier(i.name, true).setType(i.getType)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
       }
+      case lt @ LetTuple(ids,e,b) => {
+        val newIDs = ids.map((i) => FreshIdentifier(i.name, true).setType(i.getType))
+        val substsMap = ids.zip(newIDs).map((elem) => { val (id,newid) = elem; (id.toVariable -> newid.toVariable) }).toMap[Expr,Expr]
+        Some(LetTuple(newIDs, e, replace(substsMap, b)))
+      }
       case _ => None
     }
 
