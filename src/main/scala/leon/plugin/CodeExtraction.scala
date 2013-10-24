@@ -15,6 +15,7 @@ import xlang.TreeOps._
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.TreeOps._
+import invariant._
 
 trait CodeExtraction extends Extractors {
   self: LeonExtraction =>
