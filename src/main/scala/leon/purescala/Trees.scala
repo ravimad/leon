@@ -379,10 +379,6 @@ object Trees {
   }
 
   case class DeBruijnIndex(index: Int) extends Expr with Terminal
-  
-  case class TimeVariable() extends Expr with Terminal with FixedType {
-    val fixedType = Int32Type
-  }
 
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
