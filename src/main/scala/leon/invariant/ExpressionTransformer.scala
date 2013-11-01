@@ -34,6 +34,7 @@ object ExpressionTransformer {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
+  val mone = IntLiteral(-1)
   val tru = BooleanLiteral(true)    
 
   /**
@@ -442,7 +443,7 @@ object ExpressionTransformer {
   }
   
   /**
-   * Some simplification rules
+   * Some simplification rules (keep adding more and more rules)
    */
    def simplify(expr: Expr) : Expr = {
         
@@ -454,9 +455,11 @@ object ExpressionTransformer {
   }
     
    /**
-    * The input expression is assumed to be in nnf form
+    * The following may have some bugs
+    * TODO: we may consider this later if there is a need
     */
-  def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
+   //the input is assumed to be in nnf form
+  /*def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
     
     def apply1PRuleRec(e : Expr) : Expr = e match { 
     	case And(args) => {
@@ -497,48 +500,7 @@ object ExpressionTransformer {
         }
       }
     })(substExpr)
-  }
-
-  /**
-   * eliminates the specified variables from the input disjunct (i.e, a conjunction of atoms) using the one point rule
-    * The input expression is assumed to be in nnf form
-    */
-  def apply1PRuleOnDisjunct(disjunct: Expr, vars: Set[Identifier]): Map[Identifier, Expr] = {
-
-    if (!isDisjunct(disjunct)) throw new IllegalStateException("input expresssion is not a disjunct: " + disjunct)
-
-    var valueMap = Map[Identifier, Expr]()
-
-    def recCollect(e: Expr): Unit = e match {
-      case And(args) => args.foreach(recCollect _)
-      case Equals(Variable(id1), Variable(id2)) => {
-        val found1 = vars.contains(id1)
-        val found2 = vars.contains(id2)
-
-        if (found1 && !found2 && !valueMap.contains(id1)) valueMap += (id1 -> id2.toVariable)
-        else if (!found1 && found2 && !valueMap.contains(id2)) valueMap += (id2 -> id1.toVariable)
-        else if (found1 && found2 && !valueMap.contains(id1) && valueMap.contains(id2)) {
-          //in this case, one of the dummies has a mapping
-          valueMap += (id1 -> valueMap(id2))
-        } else if (found1 && found2 && valueMap.contains(id1) && !valueMap.contains(id2)) {
-          //dual to the above case
-          valueMap += (id2 -> valueMap(id1))
-        } else {
-          //do nothing, in this case both are dummies and both do not/do have a mapping or both are not dummies
-        }
-      }
-      case _ => ;
-    }
-
-    //keep applying recCollect until the valueMap does not change
-    var oldSize = -1
-    while (oldSize != valueMap.size) {
-      oldSize = valueMap.size
-      recCollect(disjunct)
-    }
-
-    valueMap
-  }
+  }*/
 
   /**
    * Input expression is assumed to be in nnf form
@@ -561,60 +523,6 @@ object ExpressionTransformer {
     case And(_) | Implies(_,_) | Iff(_,_) | Not(_)  => false
     case _ => true
   }
-  
-  /*def simplifyArithWithReals(expr: Expr): Expr = {
-    def simplify0(expr: Expr): Expr = expr match {
-      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
-      //case Plus(RealLiteral(n1,d1), RealLiteral(n2,d2)) => IntLiteral(i1 + i2)
-      case Plus(WholeNumber(0), e) => e
-      case Plus(e, WholeNumber(0)) => e
-      case Plus(e1, UMinus(e2)) => Minus(e1, e2)
-      case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
-      case Plus(Plus(IntLiteral(i1), e), IntLiteral(i2)) => Plus(IntLiteral(i1+i2), e)
-
-      case Minus(e, WholeNumber(0)) => e
-      case Minus(WholeNumber(0), e) => UMinus(e)
-      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
-      case Minus(e1, UMinus(e2)) => Plus(e1, e2)
-      case Minus(e1, Minus(UMinus(e2), e3)) => Plus(e1, Plus(e2, e3))
-
-      case UMinus(IntLiteral(x)) => IntLiteral(-x)
-      case UMinus(UMinus(x)) => x
-      case UMinus(Plus(UMinus(e1), e2)) => Plus(e1, UMinus(e2))
-      case UMinus(Minus(e1, e2)) => Minus(e2, e1)
-
-      case Times(WholeNumber(1), e) => e
-      case Times(WholeNumber(-1), e) => UMinus(e)
-      case Times(e, WholeNumber(1)) => e
-      case Times(WholeNumber(0), _) => IntLiteral(0)
-      case Times(_, WholeNumber(0)) => IntLiteral(0)
-      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)      
-      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
-      case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
-      case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
-
-      case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
-      case Division(e, IntLiteral(1)) => e
-
-      //here we put more expensive rules
-      //btw, I know those are not the most general rules, but they lead to good optimizations :)
-      case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
-      case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
-      case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
-      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => IntLiteral(0)
-      case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
-
-      //default
-      case e => e
-    }
-          
-
-    val res = fix(simplePostTransform(simplify0))(expr)
-    res
-  }
-  */
   
   def PrintWithIndentation(wr : PrintWriter, expr: Expr) : Unit = {
         
