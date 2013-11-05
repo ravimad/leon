@@ -69,7 +69,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
     for((funDef, vcs) <- vcs.toSeq.sortWith((a,b) => a._1 < b._1); vcInfo <- vcs if !interruptManager.isInterrupted()) {
       val funDef = vcInfo.funDef
       val vc = vcInfo.condition
-
+           
       reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
       reporter.debug("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
       reporter.debug(simplifyLets(vc))

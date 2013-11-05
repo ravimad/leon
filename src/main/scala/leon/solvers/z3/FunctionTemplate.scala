@@ -60,7 +60,7 @@ class FunctionTemplate private(
     zippedFunDefArgs
   }
 
-  val asZ3Clauses: Seq[Z3AST] = asClauses.map {
+  val asZ3Clauses: Seq[Z3AST] = asClauses.map {        
     solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
   }
 
@@ -264,7 +264,7 @@ object FunctionTemplate {
           }
 
         case i @ IfExpr(cond, thenn, elze) => {
-          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {
+          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {                       
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
