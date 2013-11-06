@@ -52,7 +52,7 @@ trait Z3ModelReconstruction {
 
     def completeID(id : Identifier) : Unit = if (SIMPLESTCOMPLETION) {
       asMap = asMap + ((id -> simplestValue(id.toVariable)))
-      reporter.info("Completing variable '" + id + "' to simplest value")
+      //reporter.info("Completing variable '" + id + "' to simplest value")
     } else {
       asMap = asMap + ((id -> randomValue(id.toVariable)))
       reporter.info("Completing variable '" + id + "' to random value")
