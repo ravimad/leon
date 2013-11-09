@@ -30,7 +30,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
     def rec(ctx: Map[Identifier,Expr], expr: Expr) : Expr = if(left <= 0) {
       throw RuntimeError("Diverging computation.")
     } else {
-      // println("Step on : " + expr)
+       //println("Step on : " + expr)
       // println(ctx)
       left -= 1
       expr match {
@@ -68,7 +68,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           }
         }
         case Waypoint(_, arg) => rec(ctx, arg)
-        case FunctionInvocation(fd, args) => {
+        case call@FunctionInvocation(fd, args) => {
           val evArgs = args.map(a => rec(ctx, a))
           // build a mapping for the function...
           val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)
@@ -101,6 +101,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
             }
           }
 
+          //println("Call: "+call+" Result: "+callResult)
           callResult
         }
         case And(args) if args.isEmpty => BooleanLiteral(true)
