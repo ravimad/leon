@@ -742,8 +742,11 @@ trait AbstractZ3Solver
             }
           }
 
-          case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+          case Z3NumeralIntAST(Some(v)) => IntLiteral(v)          
           case Z3NumeralRealAST(num : BigInt,dem: BigInt) => {
+            //TODO : denominator could be zero
+            /*if(dem.intValue == 0) 
+              throw IllegalStateException("Denominator is zero!! ")*/
         	  RealLiteral(num.intValue,dem.intValue)
           } 
           /*case Z3NumeralAST(None) => {

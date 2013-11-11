@@ -14,8 +14,8 @@ trait Z3ModelReconstruction {
   self: AbstractZ3Solver =>
 
   // exprToZ3Id, softFromZ3Formula, reporter
-
-  private final val AUTOCOMPLETEMODELS : Boolean = true
+  
+  protected val AUTOCOMPLETEMODELS : Boolean = true
   private final val SIMPLESTCOMPLETION : Boolean = true // if true, use 0, Nil(), etc., else random
 
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
@@ -63,8 +63,9 @@ trait Z3ModelReconstruction {
         case None if (AUTOCOMPLETEMODELS) => completeID(id)
         case None => ;
         case Some(v @ Variable(exprId)) if (AUTOCOMPLETEMODELS && exprId == id) => completeID(id)
+        //do nothing if there exists no model for variable and autocomplete is turned off
+        case Some(v @ Variable(exprId)) if (exprId == id) => ;        
         case Some(ex) =>{
-          
           asMap = asMap + ((id -> ex))
         }
       }
