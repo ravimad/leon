@@ -17,6 +17,7 @@ object Main {
       purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
       invariant.InferInvariantsPhase,
+      smtlib.LeonToHornPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase
@@ -31,6 +32,7 @@ object Main {
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
       LeonFlagOptionDef ("inferInv",   "--inferInv",          "Invariant Inference"),
+      LeonFlagOptionDef ("genHorn",   "--genHorn",          "Dumping Leon programs as Horn Clauses in SMTLIBv2 format"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
@@ -143,6 +145,8 @@ object Main {
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("inferInv", value) =>
         settings = settings.copy(inferInv = value)
+      case LeonFlagOption("genHorn", value) =>
+        settings = settings.copy(genHorn = value)
       case LeonFlagOption("xlang", value) =>
         settings = settings.copy(xlang = value)
       case LeonValueOption("debug", ListValue(sections)) =>
@@ -201,7 +205,10 @@ object Main {
     val pipeProcess: Pipeline[Program, Any] =       
       if (settings.inferInv) {
         invariant.InferInvariantsPhase
-      } else if (settings.synthesis) {
+      } else if(settings.genHorn) {        
+        smtlib.LeonToHornPhase
+      }
+      else if (settings.synthesis) {
         synthesis.SynthesisPhase
       } else if (settings.termination) {
         termination.TerminationPhase
