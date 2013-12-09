@@ -756,7 +756,7 @@ trait AbstractZ3Solver
           }*/
           case other @ _ => {
             System.err.println("Don't know what this is " + other) 
-            throw new CantTranslateException(t)
+            throw new CantTranslateException(t)           
           }
         }
     }

@@ -5,9 +5,7 @@ package plugin
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
-
 import scala.language.implicitConversions
-
 import purescala.Definitions._
 import purescala.Trees.{Expr => LeonExpr, _}
 import xlang.Trees.{Block => LeonBlock, _}
@@ -16,6 +14,7 @@ import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.TreeOps._
 import invariant._
+import leon.purescala.NonDeterminismExtension
 
 trait CodeExtraction extends Extractors {
   self: LeonExtraction =>
@@ -24,8 +23,8 @@ trait CodeExtraction extends Extractors {
   import global.definitions._
   import StructuralExtractors._
   import ExpressionExtractors._
-  import ExtractorHelpers._
-
+  import ExtractorHelpers._ 
+  
   class ScalaPos(p: global.Position) extends ScalacPositional {
     setPosInfo(p.line, p.column)
   }
@@ -335,7 +334,15 @@ trait CodeExtraction extends Extractors {
       }
 
       funDef.body          = finalBody
+      
+      if(finalRequire.isDefined && NonDeterminismExtension.hasNondet(finalRequire.get))
+        throw IllegalStateException("Precondition has non-determinism !!"+finalRequire.get)
+      
       funDef.precondition  = finalRequire
+      
+      if(finalEnsuring.isDefined && NonDeterminismExtension.hasNondet(finalEnsuring.get._2))
+        throw IllegalStateException("Postcondition has non-determinism !!"+finalEnsuring.get)
+      
       funDef.postcondition = finalEnsuring
       funDef
     }
@@ -426,6 +433,11 @@ trait CodeExtraction extends Extractors {
 
       val res = current match {
         case ExTimeVariable() => TimeVariable()
+        
+        case ExNondetExpression(tpe) => {
+          //create a new variable with name nondet
+          Variable(NonDeterminismExtension.nondetId.setType(extractType(tpe)))
+        }
         
         case ExArrayLiteral(tpe, args) =>
           FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)))

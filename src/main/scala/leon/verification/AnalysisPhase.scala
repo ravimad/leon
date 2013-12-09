@@ -8,12 +8,11 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
-
 import solvers._
 import solvers.z3._
 import solvers.combinators._
-
 import scala.collection.mutable.{Set => MutableSet}
+import leon.purescala.NonDeterminismExtension
 
 object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
   val name = "Analysis"
@@ -48,7 +47,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
                      tactic.generatePatternMatchingExhaustivenessChecks(funDef) ++
                      tactic.generatePostconditions(funDef) ++
                      tactic.generateMiscCorrectnessConditions(funDef) ++
-                     tactic.generateArrayAccessChecks(funDef)
+                     tactic.generateArrayAccessChecks(funDef)        
 
         allVCs += funDef -> funVCs.toList
       }
@@ -68,6 +67,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
 
     for((funDef, vcs) <- vcs.toSeq.sortWith((a,b) => a._1 < b._1); vcInfo <- vcs if !interruptManager.isInterrupted()) {
       val funDef = vcInfo.funDef
+      //modified by ravi: Extension for handling non-determinism
       val vc = vcInfo.condition
            
       reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")

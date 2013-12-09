@@ -315,7 +315,7 @@ object FunctionTemplate {
     // The precondition if it exists.
     val prec : Option[Expr] = funDef.precondition.map(p => matchToIfThenElse(p))
 
-    val newBody : Option[Expr] = funDef.body.map(b => matchToIfThenElse(b))
+    val newBody : Option[Expr] = funDef.nondetBody.map(b => matchToIfThenElse(b))
 
     val invocation : Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
 
@@ -358,7 +358,6 @@ object FunctionTemplate {
         val finalPred2 : Expr = rec(activatingBool,  postHolds)
         storeGuarded(activatingBool, finalPred2)
       case None =>
-
     }
 
     new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
