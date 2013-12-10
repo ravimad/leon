@@ -15,6 +15,7 @@ import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
+import purescala._
 
 import evaluators._
 
@@ -158,15 +159,16 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
+  //private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
   private val exprTemplateCache   : MutableMap[Expr  , FunctionTemplate] = MutableMap.empty
 
   private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(this, funDef, true)
-      funDefTemplateCache += funDef -> res
-      res
-    })
+    FunctionTemplate.mkTemplate(this, funDef, true)
+//    funDefTemplateCache.getOrElse(funDef, {
+//      val res = FunctionTemplate.mkTemplate(this, funDef, true)
+//      funDefTemplateCache += funDef -> res
+//      res
+//    })
   }
 
   private def getTemplate(body: Expr): FunctionTemplate = {
@@ -546,7 +548,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             for(id <- toRelease) {
               val newClauses = unrollingBank.unlock(id)
-              println("New clauses: "+newClauses.map(fromZ3Formula2(_, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))))
+              println("New clauses: "+newClauses.map(cl => ScalaPrinter(fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt)))))
 
               for(ncl <- newClauses) {
                 solver.assertCnstr(ncl)
