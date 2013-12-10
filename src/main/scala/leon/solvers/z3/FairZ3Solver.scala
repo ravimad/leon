@@ -159,16 +159,15 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  //private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
+  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
   private val exprTemplateCache   : MutableMap[Expr  , FunctionTemplate] = MutableMap.empty
-
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    FunctionTemplate.mkTemplate(this, funDef, true)
-//    funDefTemplateCache.getOrElse(funDef, {
-//      val res = FunctionTemplate.mkTemplate(this, funDef, true)
-//      funDefTemplateCache += funDef -> res
-//      res
-//    })
+ 
+  private def getTemplate(funDef: FunDef): FunctionTemplate = {    
+    funDefTemplateCache.getOrElse(funDef, {
+      val res = FunctionTemplate.mkTemplate(this, funDef, true)
+      funDefTemplateCache += funDef -> res
+      res
+    })
   }
 
   private def getTemplate(body: Expr): FunctionTemplate = {
@@ -452,7 +451,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
-            val model = modelToMap(z3model, varsInVC)
+            //here, also consider the non-det variables as inputs. Note that the ones with higher numbers are generated 
+            //after the ones with lower numbers
+            val model = modelToMap(z3model, varsInVC ++ (exprToZ3Id.keys.collect {
+              case Variable(id) if NonDeterminismExtension.isNonDetId(id) => id              
+            }))
 
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")
@@ -548,7 +551,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             for(id <- toRelease) {
               val newClauses = unrollingBank.unlock(id)
-              println("New clauses: "+newClauses.map(cl => ScalaPrinter(fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt)))))
+              println("New clauses: "+newClauses.map(cl => fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))))
 
               for(ncl <- newClauses) {
                 solver.assertCnstr(ncl)

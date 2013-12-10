@@ -9,12 +9,10 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
-
 import evaluators._
-
 import z3.scala._
-
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
+import leon.purescala.NonDeterminismExtension
 
 case class Z3FunctionInvocation(funDef: FunDef, args: Seq[Z3AST])
 
@@ -39,9 +37,17 @@ class FunctionTemplate private(
 
   private val z3 = solver.z3
 
-  private val asClauses : Seq[Expr] = {
+  /**
+   * This code is changed to handle non-determinism
+   * @author: ravi 
+   */
+  private def asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
-      Implies(Variable(b), e)
+      
+      //replaces every non-det variable by a unique variable
+      val finale = NonDeterminismExtension.makeUniqueNondetIds(e)           
+      
+      Implies(Variable(b), finale)
     }).toSeq
   }
 
@@ -60,9 +66,11 @@ class FunctionTemplate private(
     zippedFunDefArgs
   }
 
-  val asZ3Clauses: Seq[Z3AST] = asClauses.map {        
-    solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
-  }
+  def asZ3Clauses: Seq[Z3AST] = asClauses.map( (cl) => {        
+    val z3formula = solver.toZ3Formula(cl, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
+    //println("z3formula: "+z3formula)
+    z3formula
+  })
 
   private val blockers : Map[Identifier,Set[FunctionInvocation]] = {
     val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
@@ -315,7 +323,7 @@ object FunctionTemplate {
     // The precondition if it exists.
     val prec : Option[Expr] = funDef.precondition.map(p => matchToIfThenElse(p))
 
-    val newBody : Option[Expr] = funDef.nondetBody.map(b => matchToIfThenElse(b))
+    val newBody : Option[Expr] = funDef.body.map(b => matchToIfThenElse(b))
 
     val invocation : Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
 
