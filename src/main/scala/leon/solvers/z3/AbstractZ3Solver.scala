@@ -379,6 +379,7 @@ trait AbstractZ3Solver
       case Some(s) => s
       case None => {
         reporter.warning("Resorting to uninterpreted type for : " + other)
+        //throw IllegalStateException("Resorting to uninterpreted type for : " + other)
         val symbol = z3.mkIntSymbol(nextIntForSymbol())
         val newFBSort = z3.mkUninterpretedSort(symbol)
         fallbackSorts = fallbackSorts + (other -> newFBSort)
@@ -388,6 +389,7 @@ trait AbstractZ3Solver
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
+    println("Formula to translate: "+expr)
     class CantTranslateException extends Exception
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
@@ -519,19 +521,25 @@ trait AbstractZ3Solver
         }
         case SetMin(s) => intSetMinFun(rec(s))
         case SetMax(s) => intSetMaxFun(rec(s))
-        case f @ FiniteMap(elems) => f.getType match {
-          case tpe@MapType(fromType, toType) =>
-            typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
-            val fromSort = typeToSort(fromType)
-            val toSort = typeToSort(toType)
-            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
-          case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
+        case f @ FiniteMap(elems) => {
+          //throw IllegalStateException("Map type: "+f.getType)
+          f.getType match {        
+            case tpe@MapType(fromType, toType) =>            
+              typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
+              val fromSort = typeToSort(fromType)
+              val toSort = typeToSort(toType)
+              elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
+            case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
+          }
         }
-        case mg @ MapGet(m,k) => m.getType match {
+        case mg @ MapGet(m,k) => {
+          //throw IllegalStateException("Map type: "+m.getType)
+          m.getType match {       
           case MapType(fromType, toType) =>
             val selected = z3.mkSelect(rec(m), rec(k))
             mapRangeValueSelectors(toType)(selected)
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+          }
         }
         case MapUnion(m1,m2) => m1.getType match {
           case MapType(ft, tt) => m2 match {

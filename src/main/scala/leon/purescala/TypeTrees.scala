@@ -71,7 +71,9 @@ object TypeTrees {
     case other => other
   }
 
-  def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
+  def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = {
+        
+    (t1,t2) match {    
     case (c1: ClassType, c2: ClassType) => {
       import scala.collection.immutable.Set
       var c: ClassTypeDef = c1.classDef
@@ -109,7 +111,7 @@ object TypeTrees {
     case (AnyType,o2) => Some(AnyType)
 
     case _ => None
-  }
+  }}
 
   def leastUpperBound(ts: Seq[TypeTree]): Option[TypeTree] = {
     def olub(ot1: Option[TypeTree], t2: Option[TypeTree]): Option[TypeTree] = ot1 match {

@@ -551,7 +551,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             for(id <- toRelease) {
               val newClauses = unrollingBank.unlock(id)
-              println("New clauses: "+newClauses.map(cl => fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))))
+              //println("New clauses: "+newClauses.map(cl => fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))))
 
               for(ncl <- newClauses) {
                 solver.assertCnstr(ncl)

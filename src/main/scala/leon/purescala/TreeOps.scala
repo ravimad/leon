@@ -807,7 +807,7 @@ object TreeOps {
     cacheMGWC.get(expr) match {
       case Some(res) =>
         res
-      case None =>
+      case None =>       
         val r = convertMapGet(expr)
         cacheMGWC += expr -> r
         r
@@ -817,8 +817,12 @@ object TreeOps {
   private def convertMapGet(expr: Expr) : Expr = {
     def rewriteMapGet(e: Expr) : Option[Expr] = e match {
       case mg @ MapGet(m,k) => 
-        val ida = MapIsDefinedAt(m, k)
-        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPosInfo(mg)).setType(mg.getType))
+        /*val ida = MapIsDefinedAt(m, k)        
+        val res = Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPosInfo(mg)).setType(mg.getType))*/
+        val MapType(_, totpe) = m.getType
+        val res = Some(mg.setType(totpe))
+        //println("Type: "+mg.getType)
+        res
       case _ => None
     }
 

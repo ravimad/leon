@@ -65,8 +65,15 @@ object Trees {
 
     funDef.args.zip(args).foreach { case (a, c) => typeCheck(c, a.tpe) }
   }
-  case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
-    val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)
+  case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {    
+    val fixedType = {
+      val tpe = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)
+      println("Type of: "+this)
+      println("lub of t1, t2: "+ thenn.getType + elze.getType +" is "+tpe)
+      tpe
+    }
+    
+    
   }
 
   case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
