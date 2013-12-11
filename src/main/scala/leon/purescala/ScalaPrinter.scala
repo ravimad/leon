@@ -149,6 +149,13 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
     case MapGet(m,k) =>
       pp(m, lvl)
       ppNary(Seq(k), "(", ",", ")", lvl)
+      
+    case MapUnion(m1,m2) => {
+      pp(m1, lvl)
+      sb.append(".updated(")
+      pp(m2, lvl)
+      sb.append(")")      
+    }
 
     case MapIsDefinedAt(m,k) => {
       pp(m, lvl)

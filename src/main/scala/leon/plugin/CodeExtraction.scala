@@ -875,7 +875,8 @@ trait CodeExtraction extends Extractors {
 
           rm.getType match {
             case t @ MapType(ft, tt) =>
-              MapUnion(rm, FiniteMap(Seq((rf, rt))).setType(t)).setType(t)
+              val newentry = FiniteMap(Seq((rf, rt))).setType(t)              
+              MapUnion(rm, newentry).setType(t)
 
             case t @ ArrayType(bt) =>
               ArrayUpdated(rm, rf, rt).setType(t).setPosInfo(up.pos)

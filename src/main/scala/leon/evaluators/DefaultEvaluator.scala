@@ -33,7 +33,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
        //println("Step on : " + expr)
       // println(ctx)
       left -= 1
-      expr match {
+      val evalRes = expr match {
         case Variable(id) => {
           if(ctx.isDefinedAt(id)) {
             val res = ctx(id)
@@ -308,6 +308,8 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           throw EvalError("Unhandled case in Evaluator : " + other) 
         }
       }
+      //println("Result of evaluating: "+expr+" = "+evalRes)
+      evalRes
     }
 
     try {

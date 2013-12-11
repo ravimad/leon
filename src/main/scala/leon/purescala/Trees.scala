@@ -67,13 +67,9 @@ object Trees {
   }
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {    
     val fixedType = {
-      val tpe = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)
-      println("Type of: "+this)
-      println("lub of t1, t2: "+ thenn.getType + elze.getType +" is "+tpe)
+      val tpe = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)      
       tpe
     }
-    
-    
   }
 
   case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
@@ -538,11 +534,33 @@ object Trees {
   case class MultisetToSet(multiset: Expr) extends Expr
 
   /* Map operations. */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr {
+    if (!singletons.isEmpty) {
+      //compute the lub of all the key types and value types 
+      val (keyTypes, valTypes) = singletons.foldLeft((Seq[TypeTree](), Seq[TypeTree]()))((acc, elem) => {
+        val (ktpes, vtpes) = acc
+        (ktpes :+ elem._1.getType, vtpes :+ elem._2.getType)
+      })
+      val keylub = TypeTrees.leastUpperBound(keyTypes)
+      val vallub = TypeTrees.leastUpperBound(valTypes)
+      if (keylub.isDefined && vallub.isDefined)
+        this.setType(MapType(keylub.get, vallub.get))
+    }
+  }
 
-  case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr 
-  case class MapDifference(map: Expr, keys: Expr) extends Expr 
+  case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional {
+    val MapType(kt, vt) = map.getType    
+    assert(TypeTrees.isSubtypeOf(key.getType, kt)) 
+    this.setType(vt)
+  }
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr {    
+    assert(map1.getType == map2.getType) 
+    this.setType(map1.getType)
+    //println("Map union, type: "+this.getType)
+  }
+  case class MapDifference(map: Expr, keys: Expr) extends Expr {    
+    this.setType(map.getType)
+  }
   case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }

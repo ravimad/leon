@@ -389,7 +389,7 @@ trait AbstractZ3Solver
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
-    println("Formula to translate: "+expr)
+    //println("Formula to translate: "+expr)
     class CantTranslateException extends Exception
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
