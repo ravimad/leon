@@ -120,7 +120,7 @@ object TreeOps {
             IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
           else
             i
-        }
+        }        
         case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
 
         case c @ Choose(args, body) =>
@@ -344,7 +344,7 @@ object TreeOps {
 
   // convert describes how to compute a value for the leaves (that includes
   // functions with no args.)
-  // combine descriess how to combine two values
+  // combine describes how to combine two values
   def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, expression: Expr) : A = {
     treeCatamorphism(convert, combine, (e:Expr,a:A)=>a, expression)
   }

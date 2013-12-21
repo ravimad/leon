@@ -375,6 +375,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
     val newClauses = unrollingBank.scanForNewTemplates(expression)
+    //println("Init clauses: "+newClauses.map(cl => fromZ3Formula2(cl, (name:String, tt: TypeTree) => 
+    //  FreshIdentifier(name,false).setType(tt))).map(ScalaPrinter.apply _))
 
     for (cl <- newClauses) {
       solver.assertCnstr(cl)
@@ -439,9 +441,16 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         case Some(true) => // SAT
 
           val z3model = solver.getModel
+          //println("z3model: "+z3model)
+
+          //here, also consider the non-det variables as inputs. Note that the ones with higher numbers are generated 
+          //after the ones with lower numbers
+          val model = modelToMap(z3model, varsInVC ++ (exprToZ3Id.keys.collect {
+            case Variable(id) if NonDeterminismExtension.isNonDetId(id) => id
+          }))
 
           if (this.checkModels) {
-            val (isValid, model) = validateModel(z3model, entireFormula, varsInVC, silenceErrors = false)
+            val (isValid, _) = validateModel(z3model, entireFormula, varsInVC, silenceErrors = false)
 
             if (isValid) {
               foundAnswer(Some(true), model)
@@ -451,12 +460,6 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
-            //here, also consider the non-det variables as inputs. Note that the ones with higher numbers are generated 
-            //after the ones with lower numbers
-            val model = modelToMap(z3model, varsInVC ++ (exprToZ3Id.keys.collect {
-              case Variable(id) if NonDeterminismExtension.isNonDetId(id) => id              
-            }))
-
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")
             //reporter.debug(modelAsString)
@@ -551,7 +554,9 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             for(id <- toRelease) {
               val newClauses = unrollingBank.unlock(id)
-              //println("New clauses: "+newClauses.map(cl => fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))))
+              //println("New clauses: "+newClauses.map(cl => 
+              //  fromZ3Formula2(cl, (name:String, tt: TypeTree) => FreshIdentifier(name,false).setType(tt))).map(
+              //      ScalaPrinter.apply _).mkString("\n"))
 
               for(ncl <- newClauses) {
                 solver.assertCnstr(ncl)

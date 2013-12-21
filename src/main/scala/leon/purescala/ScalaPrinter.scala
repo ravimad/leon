@@ -103,6 +103,10 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
     case FunctionInvocation(fd, args) =>
       sb.append(idToString(fd.id))
       ppNary(args, "(", ", ", ")", lvl)
+    
+    case Assume(cond) =>
+      sb.append("assume")
+      ppNary(Seq(cond), "(", ", ", ")", lvl)
 
     case Plus(l,r) => ppBinary(l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(l, r, " - ", lvl)
