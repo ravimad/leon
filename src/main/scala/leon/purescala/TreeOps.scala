@@ -45,6 +45,12 @@ object TreeOps {
 
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
+        newExpr match {
+          case Variable(id) if(NonDeterminismExtension.isNonDetId(id)) => 
+            //TODO: also check if this is an expression/function call containing nondet
+            throw IllegalStateException("Replacing expression by nondet !"+ex)
+          case _ => ;
+        }
         if(newExpr.getType == Untyped) {
           sys.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
@@ -156,6 +162,12 @@ object TreeOps {
     def applySubst(ex: Expr) : Expr = subst(ex) match {
       case None => ex
       case Some(newEx) => {
+        newEx match {
+          case Variable(id) if(NonDeterminismExtension.isNonDetId(id)) => 
+            //TODO: also check if this is an expression/function call containing nondet
+            throw IllegalStateException("Replacing expression by nondet !"+ex)
+          case _ => ;
+        }
         somethingChanged = true
         if(newEx.getType == Untyped) {
           sys.error("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
@@ -482,9 +494,10 @@ object TreeOps {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b) => Some(replace(Map((Variable(i) -> t)), b))
+      case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b)  && !NonDeterminismExtension.hasNondet(t) => 
+        Some(replace(Map((Variable(i) -> t)), b))
 
-      case letExpr @ Let(i,e,b) if !containsChoose(b) => {
+      case letExpr @ Let(i,e,b) if !containsChoose(b) && !NonDeterminismExtension.hasNondet(e) => {
         val occurences = treeCatamorphism[Int]((e:Expr) => e match {
           case Variable(x) if x == i => 1
           case _ => 0
@@ -498,7 +511,8 @@ object TreeOps {
         }
       }
 
-      case letTuple @ LetTuple(ids, Tuple(exprs), body) if !containsChoose(body) =>
+      case letTuple @ LetTuple(ids, tp@Tuple(exprs), body) if !containsChoose(body) 
+      && !NonDeterminismExtension.hasNondet(tp) =>
 
         var newBody = body
 
@@ -532,7 +546,7 @@ object TreeOps {
           Some(LetTuple(remIds, Tuple(remExprs), newBody))
         }
 
-      case l @ LetTuple(ids, tExpr, body) if !containsChoose(body) =>
+      case l @ LetTuple(ids, tExpr, body) if !containsChoose(body) && !NonDeterminismExtension.hasNondet(tExpr) =>
         val TupleType(types) = tExpr.getType
         val arity = ids.size
         // A map containing vectors of the form (0, ..., 1, ..., 0) where the one corresponds to the index of the identifier in the

@@ -736,7 +736,7 @@ trait CodeExtraction extends Extractors {
           val fromUnderlying = extractType(ft.tpe)
           val toUnderlying   = extractType(tt.tpe)
           val tpe = MapType(fromUnderlying, toUnderlying)
-
+          
           FiniteMap(Seq()).setType(tpe)
 
         case ExLiteralMap(ft, tt, elems) =>

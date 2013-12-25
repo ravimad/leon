@@ -8,8 +8,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
-
 import scala.collection.mutable.{Map => MutableMap}
+import leon.purescala.NonDeterminismExtension
 
 class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
     val description = "Default verification condition generation approach"
@@ -54,7 +54,18 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
   
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
       val toRet = if(function.hasBody) {
-        val cleanBody = expandLets(matchToIfThenElse(function.body.get))
+        val body = function.body.get
+        //TODO: handle functions containing nondeterminism
+//        if(NonDeterminismExtension.hasNondet(body)){
+//          //here compute a backward slice for the parameters and replace the call by the precondition
+//          
+//        } 
+//        else {
+//          //compute parameter expressions directly by expanding the lets
+//          computeParameterExpressions(body)
+//        }
+        //val cleanBody = expandLets(matchToIfThenElse(body))
+        val cleanBody = matchToIfThenElse(body)
 
         val allPathConds = collectWithPathCondition((t => t match {
           case FunctionInvocation(fd, _) if(fd.hasPrecondition) => true
