@@ -494,6 +494,10 @@ object TreeOps {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
+      case Let(_,Assume(_),_) => {
+        //do nothing
+        None
+      }
       case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b)  && !NonDeterminismExtension.hasNondet(t) => 
         Some(replace(Map((Variable(i) -> t)), b))
 

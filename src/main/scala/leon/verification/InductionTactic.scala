@@ -84,7 +84,8 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
     firstAbsClassDef(function.args) match {
       case Some((classDef, arg)) => {
         val toRet = if(function.hasBody) {
-          val cleanBody = expandLets(matchToIfThenElse(function.body.get))
+          //val cleanBody = expandLets(matchToIfThenElse(function.body.get))
+          val cleanBody = matchToIfThenElse(function.body.get)
 
           val allPathConds = collectWithPathCondition((t => t match {
             case FunctionInvocation(fd, _) if(fd.hasPrecondition) => true

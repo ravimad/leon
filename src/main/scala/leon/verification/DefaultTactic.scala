@@ -55,15 +55,6 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
       val toRet = if(function.hasBody) {
         val body = function.body.get
-        //TODO: handle functions containing nondeterminism
-//        if(NonDeterminismExtension.hasNondet(body)){
-//          //here compute a backward slice for the parameters and replace the call by the precondition
-//          
-//        } 
-//        else {
-//          //compute parameter expressions directly by expanding the lets
-//          computeParameterExpressions(body)
-//        }
         //val cleanBody = expandLets(matchToIfThenElse(body))
         val cleanBody = matchToIfThenElse(body)
 
@@ -78,9 +69,10 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           Not(And(And(path), Not(shouldHold)))
         }
 
-        allPathConds.map(pc => {
-          val path : Seq[Expr] = pc._1
+        allPathConds.map(pc => {         
+          val path : Seq[Expr] = pc._1          
           val fi = pc._2.asInstanceOf[FunctionInvocation]
+          //println("Path: "+path+" fi: "+fi)
           val FunctionInvocation(fd, args) = fi
           val prec : Expr = freshenLocals(matchToIfThenElse(fd.precondition.get))
           val newLetIDs = fd.args.map(a => FreshIdentifier("arg_" + a.id.name, true).setType(a.tpe))
@@ -95,8 +87,10 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           //    if(fd == function) VCKind.InvariantInd else VCKind.InvariantInit,
           //    this.asInstanceOf[DefaultTactic]).setPosInfo(fd)
           //else
+          val withpre = withPrecIfDefined(path, newCall)
+          //println("WithPre: "+withpre)
             new VerificationCondition(
-              withPrecIfDefined(path, newCall),
+              withpre,
               function,
               VCKind.Precondition,
               this.asInstanceOf[DefaultTactic]).setPosInfo(fi)
@@ -215,6 +209,10 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }
 
         expr match {
+          case Let(_, Assume(cond), b) => {            
+            rec(cond, path)
+            rec(b, cond :: path)
+          }
           case Let(i,e,b) => {
             rec(e, path)
             rec(b, Equals(Variable(i), e) :: path)
@@ -223,7 +221,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             rec(cond, path)
             rec(thenn, cond :: path)
             rec(elze, Not(cond) :: path)
-          }
+          }          
           case NAryOperator(args, _) => args.foreach(rec(_, path))
           case BinaryOperator(t1, t2, _) => rec(t1, path); rec(t2, path)
           case UnaryOperator(t, _) => rec(t, path)

@@ -224,6 +224,11 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       sb.append("else\n")
       ind(lvl+1)
       pp(e, lvl+1)
+    
+   case Assume(cond) =>
+      sb.append("assume(")
+      pp(cond, lvl)
+      sb.append(")\n")
 
     case mex @ MatchExpr(s, csc) => {
       def ppc(p: Pattern): Unit = p match {
