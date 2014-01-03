@@ -12,7 +12,7 @@ import purescala.Definitions._
 import evaluators._
 import z3.scala._
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
-import leon.purescala.NonDeterminismExtension
+import leon.purescala.NondeterminismExtension
 
 case class Z3FunctionInvocation(funDef: FunDef, args: Seq[Z3AST])
 
@@ -45,7 +45,7 @@ class FunctionTemplate private(
     (for((b,es) <- guardedExprs; e <- es) yield {
       
       //replaces every non-det variable by a unique variable
-      val finale = NonDeterminismExtension.makeUniqueNondetIds(e)           
+      val finale = NondeterminismExtension.makeUniqueNondetIds(e)           
       
       Implies(Variable(b), finale)
     }).toSeq

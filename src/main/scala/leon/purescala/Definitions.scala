@@ -289,7 +289,7 @@ object Definitions {
      * newly added procedures for handling non-determinism
      */
     def nondetBody : Option[Expr] ={
-      body.map(NonDeterminismExtension.makeUniqueNondetIds _)
+      body.map(NondeterminismExtension.makeUniqueNondetIds _)
     }
     
     /*def nondetPost : Option[(Identifier,Expr)] ={

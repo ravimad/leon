@@ -14,7 +14,7 @@ import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.TreeOps._
 import invariant._
-import leon.purescala.NonDeterminismExtension
+import leon.purescala.NondeterminismExtension
 
 trait CodeExtraction extends Extractors {
   self: LeonExtraction =>
@@ -234,7 +234,7 @@ trait CodeExtraction extends Extractors {
       new FunDef(FreshIdentifier(nameStr), toPureScalaType(tpt.tpe), newParams)
     }
 
-    private def extractFunDef(funDef: FunDef, body: Tree): FunDef = {
+    private def extractFunDef(funDef: FunDef, body: Tree): FunDef = {      
       currentFunDef = funDef
 
       val (body2, ensuring) = body match {
@@ -334,13 +334,13 @@ trait CodeExtraction extends Extractors {
       }
 
       funDef.body          = finalBody
-      
-      if(finalRequire.isDefined && NonDeterminismExtension.hasNondet(finalRequire.get))
+   
+      if(finalRequire.isDefined && NondeterminismExtension.hasNondet(finalRequire.get))
         throw IllegalStateException("Precondition has non-determinism !!"+finalRequire.get)
       
       funDef.precondition  = finalRequire
       
-      if(finalEnsuring.isDefined && NonDeterminismExtension.hasNondet(finalEnsuring.get._2))
+      if(finalEnsuring.isDefined && NondeterminismExtension.hasNondet(finalEnsuring.get._2))
         throw IllegalStateException("Postcondition has non-determinism !!"+finalEnsuring.get)
       
       funDef.postcondition = finalEnsuring
@@ -436,7 +436,7 @@ trait CodeExtraction extends Extractors {
         
         case ExNondetExpression(tpe) => {
           //create a new variable with name nondet
-          Variable(NonDeterminismExtension.nondetId.setType(extractType(tpe)))
+          Variable(NondeterminismExtension.nondetId.setType(extractType(tpe)))
         }
         
         case ExArrayLiteral(tpe, args) =>
