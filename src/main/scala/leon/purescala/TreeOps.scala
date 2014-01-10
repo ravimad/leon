@@ -323,6 +323,7 @@ object TreeOps {
       case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
       case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
       case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
+      case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case other => other
     }
 
@@ -780,9 +781,9 @@ object TreeOps {
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
       case m @ MatchExpr(scrut, cases) => {
-        // println("Rewriting the following PM: " + e)
+        //println("Rewriting the following PM: " + e)
 
-        val condsAndRhs = for(cse <- cases) yield {
+        val condsAndRhs = for(cse <- cases) yield {          
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.theGuard match {
@@ -792,6 +793,7 @@ object TreeOps {
           val newRhs = replaceFromIDs(map, cse.rhs)
           (realCond, newRhs)
         } 
+        //println("condAndRhs: "+condsAndRhs)
 
         val optCondsAndRhs = if(SimplePatternMatching.isSimple(m)) {
           // this is a hackish optimization: because we know all cases are covered, we replace the last condition by true (and that drops the check)
