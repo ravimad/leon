@@ -73,7 +73,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
-    case UnitLiteral => sb.append("()")
+    case UnitLiteral => sb.append("()")    
 
     /* These two aren't really supported in Scala, but we know how to encode them. */
     case Implies(l,r) => pp(Or(Not(l), r), lvl)
@@ -306,7 +306,8 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
     case (expr: PrettyPrintable) => expr.printWith(lvl, this)
 
-    case _ => sb.append("Expr?")
+    case e @ _ => //sb.append("Expr?") 
+      sb.append(e.toString)
   }
 
   // TYPE TREES
