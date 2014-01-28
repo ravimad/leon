@@ -201,7 +201,8 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen NondeterminismConverter andThen TimeStepsPhase andThen SubtypingPhase      
+    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase     
+      //NondeterminismConverter andThen TimeStepsPhase andThen SubtypingPhase      
       // plugin.ExtractionPhase andThen SubtypingPhase
       //plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase
 
