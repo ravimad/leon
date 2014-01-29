@@ -755,7 +755,10 @@ trait AbstractZ3Solver
             //TODO : denominator could be zero
             /*if(dem.intValue == 0) 
               throw IllegalStateException("Denominator is zero!! ")*/
-        	  RealLiteral(num.intValue,dem.intValue)
+            val rl = RealLiteral(num.intValue,dem.intValue)
+            if(num < Int.MinValue || num > Int.MaxValue || dem < Int.MinValue || dem > Int.MaxValue) 
+              rl.setOverflow
+            rl
           } 
           /*case Z3NumeralAST(None) => {
             reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
