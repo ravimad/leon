@@ -435,6 +435,8 @@ trait CodeExtraction extends Extractors {
       val res = current match {
         case ExTimeVariable() => TimeVariable()
         
+        case ExDepthVariable() => DepthVariable()
+        
         case ExNondetExpression(tpe) => {
           //create a new variable with name nondet
           Variable(NondeterminismExtension.nondetId.setType(extractType(tpe)))

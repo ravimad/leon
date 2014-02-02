@@ -6,12 +6,14 @@ import leon.utils._
 import leon.plugin.TimeStepsPhase
 import leon.plugin.NondeterminismConverter
 import leon.plugin.NonlinearityEliminationPhase
+import leon.plugin.DepthInstPhase
 
 object Main {
 
   lazy val allPhases: List[LeonPhase[_, _]] = {
     List(
       plugin.ExtractionPhase,
+      DepthInstPhase,
       TimeStepsPhase,
       NonlinearityEliminationPhase,
       NondeterminismConverter,
@@ -203,10 +205,13 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase andThen NonlinearityEliminationPhase     
-      //NondeterminismConverter andThen TimeStepsPhase andThen SubtypingPhase      
-      // plugin.ExtractionPhase andThen SubtypingPhase
-      //plugin.ExtractionPhase andThen TimeStepsPhase andThen SubtypingPhase
+    val pipeBegin : Pipeline[List[String],Program] =
+      if (settings.inferInv) {
+        plugin.ExtractionPhase andThen DepthInstPhase andThen TimeStepsPhase andThen SubtypingPhase andThen NonlinearityEliminationPhase
+      } else {
+        plugin.ExtractionPhase andThen DepthInstPhase andThen TimeStepsPhase andThen SubtypingPhase 
+      }
+      //NondeterminismConverter andThen TimeStepsPhase andThen SubtypingPhase            
 
     val pipeProcess: Pipeline[Program, Any] =       
       if (settings.inferInv) {
