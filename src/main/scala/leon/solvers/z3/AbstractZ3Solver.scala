@@ -613,17 +613,16 @@ trait AbstractZ3Solver
   
   
   /**
-   * This converts Intergers/reals in the expr to bit vectors of a specified size and 
+   * This converts Integers/reals in the expr to bit vectors of a specified size and 
    * converts the arithmetic operations accordingly
-   */
-  protected[leon] var exprToZ3BitVec : Map[Expr,Z3AST] = Map.empty
+   */  
   protected[leon] def toBitVectorFormula(expr: Expr, bitvecSize: Int) : Option[Z3AST] = {   
     class CantTranslateException extends Exception
    
     val varsInformula: Set[Identifier] = variablesOf(expr)
 
     var z3Vars: Map[Identifier,Z3AST] = {
-      exprToZ3BitVec.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+      exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
     }
     
     var bvsort = z3.mkBVSort(bitvecSize)    
@@ -640,7 +639,7 @@ trait AbstractZ3Solver
             if (id.getType == Int32Type || id.getType == RealType) {              
               val newAST = z3.mkFreshConst(id.uniqueName, bvsort)
               z3Vars = z3Vars + (id -> newAST)
-              exprToZ3BitVec += (v -> newAST)
+              exprToZ3Id += (v -> newAST)
               z3IdToExpr += (newAST -> v)
               
               //println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
@@ -668,9 +667,11 @@ trait AbstractZ3Solver
         case Not(e) => z3.mkNot(rec(e))
         
         //arithmetic operations
-        case IntLiteral(v) => z3.mkNumeral("{"+v+"}", bvsort)
+        case IntLiteral(v) => z3.mkNumeral(v.toString, bvsort)
         case rl@RealLiteral(num,denom) => if(denom == 1) {
-          z3.mkNumeral(num.toString, bvsort)          
+          val ast = z3.mkNumeral(num.toString, bvsort)
+          //println("Converted: "+num+" to "+ast)
+          ast
         } else {
           reporter.warning("denominator not one: "+rl)
           throw new CantTranslateException
@@ -840,7 +841,10 @@ trait AbstractZ3Solver
             }
           }
 
-          case Z3NumeralIntAST(Some(v)) => IntLiteral(v)          
+          case Z3NumeralIntAST(Some(v)) => {
+            //println("Int AST: "+t+" value: "+v)
+            IntLiteral(v)          
+          }
           case Z3NumeralRealAST(num : BigInt,dem: BigInt) => {
             //TODO : denominator could be zero
             /*if(dem.intValue == 0) 

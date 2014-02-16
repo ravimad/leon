@@ -30,7 +30,9 @@ trait Z3ModelReconstruction {
         case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
-          case Some(t) => softFromZ3Formula(model, t, expectedType)          
+          case Some(t) => {            
+            softFromZ3Formula(model, t, expectedType)          
+          }
         }
       }
     } else None
