@@ -27,7 +27,7 @@ trait Z3ModelReconstruction {
       
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
-        case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
+        //case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => {            
@@ -49,6 +49,10 @@ trait Z3ModelReconstruction {
   //   } else None
   // }
 
+  /**
+   * The flag fromBV indicates if the numerical values in the model be interpreted as 
+   * bitvectors or as integers (for bitvectors the extracted model is sign extended)
+   */
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {    
     var asMap = Map.empty[Identifier,Expr]
 
