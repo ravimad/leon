@@ -308,14 +308,10 @@ object Trees {
   }
 
   class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
-    // if(left.getType != BooleanType || right.getType != BooleanType) {
-    //   println("culprits: " + left.getType + ", " + right.getType)
-    //   assert(false)
-    // }
+    val fixedType = BooleanType    
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Iff => t.left == left
+      case t: Implies => t.left == left && t.right == right 
       case _ => false
     })
 
