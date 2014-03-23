@@ -273,7 +273,7 @@ trait CodeExtraction extends Extractors {
             if(tempExpr == None)
               throw new IllegalStateException("Cannot extract template as pure scala!!")
             //println("Template expression : "+tempExpr)
-            FunctionInfoFactory.setTemplate(funDef,tempExpr.get)
+            FunctionInfoFactory.setTemplate(funDef,tempExpr.get, None) //time instrumentation will happen later 
           }                    
           
           (body2, ppcond.map(r => (resId, r)))
