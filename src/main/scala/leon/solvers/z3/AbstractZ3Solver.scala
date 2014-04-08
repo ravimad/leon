@@ -362,7 +362,7 @@ trait AbstractZ3Solver
     }
     case tt @ TupleType(tpes) => tupleSorts.get(tt) match {
       case Some(s) => s
-      case None => {
+      case None => {        
         val tpesSorts = tpes.map(typeToSort)
         val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
@@ -453,7 +453,8 @@ trait AbstractZ3Solver
 
             // Remove this safety check, since choose() expresions are now
             // translated to non-unrollable variables, that end up here.
-            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")            
+            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
+            println("variable->Z3AST: "+id)
             val newAST =  z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)

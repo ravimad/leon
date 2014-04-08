@@ -68,7 +68,7 @@ object Trees {
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {    
     val fixedType = {
       val tpe = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)      
-      tpe
+      tpe      
     }
   }
   /* a construct for assuming a condition at a specific point in the body*/
@@ -455,16 +455,16 @@ object Trees {
     })
 
     override def hashCode: Int = (classDef, caseClass, selector).hashCode
-  }
-
+  }  
+    
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {    
     //val fixedType = Int32Type
-    val fixedType = lhs.getType
+    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
-    val fixedType = lhs.getType
+    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
@@ -472,15 +472,15 @@ object Trees {
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
-    val fixedType = lhs.getType
+    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
-    val fixedType = lhs.getType
+    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
-    val fixedType = lhs.getType
+    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType

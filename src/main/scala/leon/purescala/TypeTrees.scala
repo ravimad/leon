@@ -109,7 +109,9 @@ object TypeTrees {
     case (BottomType,o2) => Some(o2)
     case (o1,AnyType) => Some(AnyType)
     case (AnyType,o2) => Some(AnyType)
-
+    //LUB for reals
+    case (RealType, _) => Some(RealType)
+    case (_, RealType) => Some(RealType)
     case _ => None
   }}
 
@@ -138,6 +140,7 @@ object TypeTrees {
     case BooleanType => FiniteSize(2)
     case UnitType => FiniteSize(1)
     case Int32Type => InfiniteSize
+    case RealType => InfiniteSize
     case ListType(_) => InfiniteSize
     case ArrayType(_) => InfiniteSize
     case TupleType(bases) => {

@@ -317,6 +317,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
     case Untyped => sb.append("???")
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
+    case RealType => sb.append("Real")
     case BooleanType => sb.append("Boolean")
     case ArrayType(bt) =>
       sb.append("Array[")

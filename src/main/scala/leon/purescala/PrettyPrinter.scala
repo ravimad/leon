@@ -316,6 +316,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case Untyped => sb.append("???")
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
+    case RealType => sb.append("Real")
     case BooleanType => sb.append("Boolean")
     case ArrayType(bt) => sb.append("Array["); pp(bt, lvl); sb.append("]")
     case SetType(bt) => sb.append("Set["); pp(bt, lvl); sb.append("]")
@@ -331,7 +332,9 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       sb.append(" => ")
       pp(tt, lvl)
     }
-    case _ => sb.append("Type?")
+    case _ => {      
+      sb.append("Type?")
+    }
   }
 
   // DEFINITIONS
