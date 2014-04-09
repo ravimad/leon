@@ -127,6 +127,11 @@ object TypeTrees {
   def isSubtypeOf(t1: TypeTree, t2: TypeTree): Boolean = {
     leastUpperBound(t1, t2) == Some(t2)
   }
+  
+  def isNumericType(t: TypeTree) : Boolean = t match {
+    case n : NumericType => true
+    case _ => false
+  }
 
   // returns the number of distinct values that inhabit a type
   sealed abstract class TypeSize extends Serializable

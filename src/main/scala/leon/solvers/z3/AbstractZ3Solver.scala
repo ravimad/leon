@@ -454,7 +454,7 @@ trait AbstractZ3Solver
             // Remove this safety check, since choose() expresions are now
             // translated to non-unrollable variables, that end up here.
             // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
-            println("variable->Z3AST: "+id)
+            //println("variable->Z3AST: "+id)
             val newAST =  z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)
