@@ -419,26 +419,7 @@ object Trees {
     def setOverflow = { overflow = true }    
     def hasOverflow = overflow
   }
-  
-  //The real constants allowed by the language are only rationals
-  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {    
-    val value = (numerator,denominator)
-    val fixedType = RealType
-    private var bigRealVal : Option[(BigInt,BigInt)] = None    
-    private var overflow = false
-    
-    def setOverflow(n: BigInt, d: BigInt) = {
-      bigRealVal = Some((n,d))
-      overflow = true
-    }    
-    def hasOverflow = overflow
-    def getBigRealValue = bigRealVal  
-    
-    override def toString =  {
-      if(denominator == 1) numerator.toString      
-      else numerator + "/" + denominator
-    }
-  }
+   
   
   //a wrapper for real and integer literals (that are wholenumbers and not fractions)
   /*object WholeNumber{

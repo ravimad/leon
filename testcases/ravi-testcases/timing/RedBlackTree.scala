@@ -15,7 +15,7 @@ object RedBlackTree {
     if(x < 1) 1    
     else      
       2* twopower(x - 1)
-  } 
+  }   
   
   def size(t: Tree): Int = {
     require(blackBalanced(t))  
