@@ -303,6 +303,7 @@ object ConstantPropagation {
             if (x != 0) foldedTh
             else foldedEl
           }
+          case _ => IfThenElse(foldedCond, foldedTh, foldedEl)
         }
       }
       case lit @ IntLiteral(v) =>
