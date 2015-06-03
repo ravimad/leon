@@ -12,6 +12,7 @@ case class Settings(
   val inferInv: Boolean               =  false,
   val genHorn: Boolean               =  false,
   val genSMTLIB: Boolean               =  false,
+  val genSygus: Boolean               =  false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,
   val injectLibrary: Boolean           = false,

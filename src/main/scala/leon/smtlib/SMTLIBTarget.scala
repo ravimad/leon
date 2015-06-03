@@ -213,7 +213,7 @@ abstract class SMTLIBTarget(context: LeonContext) {
 
   def toSMT(e: Expr)(implicit bindings: Map[Identifier, SExpr]): SExpr = {
     e match {
-      case Variable(id) =>
+      case Variable(id) =>        
         declareSort(e.getType)
         bindings.getOrElse(id, variables.toB(id))
 
