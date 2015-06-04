@@ -19,8 +19,7 @@ object Main {
       xlang.XlangAnalysisPhase,
       InferInvariantsPhase,
       horncl.LeonToHornPhase,
-      smtlib.LeonToSMTLIBPhase,
-      smtlib.LeonToSyGusPhase,
+      smtlib.LeonToSMTLIBPhase,      
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase      
@@ -228,8 +227,6 @@ object Main {
         horncl.LeonToHornPhase
       } else if (settings.genSMTLIB){
         smtlib.LeonToSMTLIBPhase
-      } else if (settings.genSygus){
-        smtlib.LeonToSyGusPhase
       } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {

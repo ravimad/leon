@@ -209,6 +209,10 @@ object Trees {
 
   /* Propositional logic */
   object And {
+    def applyBinary(l: Expr, r: Expr) = {
+      new And(Seq(l, r))
+    }
+    
     def apply(l: Expr, r: Expr) : Expr = And(Seq(l, r))
 
     def apply(exprs: Seq[Expr]) : Expr = {
@@ -247,13 +251,14 @@ object Trees {
     override def hashCode: Int = exprs.hashCode + 3
   }
 
-  object Or {
+  object Or {        
     def apply(l: Expr, r: Expr) : Expr = (l,r) match {
       case (BooleanLiteral(true),_)  => BooleanLiteral(true)
       case (BooleanLiteral(false),_) => r
       case (_,BooleanLiteral(false)) => l
       case _ => new Or(Seq(l,r))
     }
+    
     def apply(exprs: Seq[Expr]) : Expr = {
       val flat = exprs.flatMap(_ match {
         case Or(es) => es

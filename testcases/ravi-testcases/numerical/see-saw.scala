@@ -13,8 +13,7 @@ object SeeSaw {
     } else {
       s(x + 2, y + 1, z)
     }
-  } ensuring (res => (100 - x <= 2 * res))
-  //template((a, b, c, d) => (a*res + b*x + c*y + d <= 0) 
+  } ensuring (res => (100 - x <= 2 * res) template((a, b, c, d) => (a*res + b*x + c*y + d <= 0)))
 } 
 //will this terminate ?
 //Does the invariant hold ?

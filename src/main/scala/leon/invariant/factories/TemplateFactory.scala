@@ -155,4 +155,22 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
 
   def getFunctionsWithTemplate : Seq[FunDef] = templateMap.keys.toSeq
 
+  /**
+   * For creating synthesis benchmarks
+   */
+  /*private var synthFuns = Map[FunDef,(FunDef,Expr)]() //a mapping from functions to their synthesis functions and templates 
+  def constructSynthFunction(argmap: Map[Expr,Expr], fd: FunDef) : FunctionInvocation = {
+    val (synfun, _) = synthFuns.getOrElse(fd, {
+    	val temp = templateMap.getOrElse(fd, { getDefaultTemplate(fd) })
+    	val freevars = variablesOf(temp).filterNot(TemplateIdFactory.IsTemplateIdentifier _).toList
+    	val synfun = new FunDef(FreshIdentifier(fd.id.name + "-template"), List(), BooleanType, 
+    	    freevars.map(id => ValDef(id, id.getType)))
+    	synthFuns += (fd -> (synfun, temp))
+    	(synfun, temp)
+    })
+    //map the arguments of synthFuns using the given mapping and construct a function invocation
+    FunctionInvocation(TypedFunDef(synfun, List()), synfun.params.map(p => argmap(p.id.toVariable)))    
+  }
+  
+  def getSynthFunctions(fd: FunDef) : Option[(FunDef, Expr)] = synthFuns.get(fd)*/
 }

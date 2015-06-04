@@ -14,13 +14,13 @@ import java.io._
 import purescala.ScalaPrinter
 import verification._
 import scala.reflect.runtime.universe
-
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
 import invariant.util.Util._
 import invariant.structure._
 import invariant.transformations._
+import leon.smtlib.LeonExprtoSynthlib
 
 /**
  * @author ravi
@@ -28,36 +28,38 @@ import invariant.transformations._
  * TODO: Fix the handling of getting a template for a function, the current code is very obscure
  * TODO: Do we need to also assert that time is >= 0
  */
-class InferenceEngineGenerator(ctx: InferenceContext, 
-    tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) {
+class InferenceEngineGenerator(ctx: InferenceContext,
+  tempSolverFactory: (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) {
 
   val reporter = ctx.reporter
   val program = ctx.program
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
 
-  def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Map[FunDef,Expr]])) = {
+  val dumpVCasSygus = true
+
+  def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Map[FunDef, Expr]])) = {
     //create a body and post of the function
     val body = funDef.nondetBody.get
     val (resid, post) = funDef.postcondition.get
     val resvar = resid.toVariable
-         
+
     val simpBody = matchToIfThenElse(body)
-    val plainBody = Equals(resvar, simpBody)    
+    val plainBody = Equals(resvar, simpBody)
     val bodyExpr = if (funDef.hasPrecondition) {
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
-    } else plainBody        
-    
-    val postExpr = matchToIfThenElse(post)       
+    } else plainBody
+
+    val postExpr = matchToIfThenElse(post)
     //create a postcondition template if the function is recursive or if a template is provided for the function
     val funinfo = FunctionInfoFactory.getFunctionInfo(funDef)
     val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
     val postTemp = if (cg.isRecursive(funDef) || (funinfo.isDefined && funinfo.get.hasTemplate)) {
       //this is a way to create an idenitity map :-))
-      val selfInv = FunctionInvocation(TypedFunDef(funDef,funDef.tparams.map(_.tp)) , funDef.params.map(_.toVariable))
+      val selfInv = FunctionInvocation(TypedFunDef(funDef, funDef.tparams.map(_.tp)), funDef.params.map(_.toVariable))
       val argmap = Util.formalToAcutal(Call(resvar, selfInv))
-      Some(tempFactory.constructTemplate(argmap, funDef))      
-    } else None    
+      Some(tempFactory.constructTemplate(argmap, funDef))
+    } else None
     val fullPost = if (postTemp.isDefined) {
       if (postExpr == tru) postTemp.get
       else And(postExpr, postTemp.get)
@@ -65,43 +67,43 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     if (fullPost == tru) {
       throw new IllegalStateException("post is true, nothing to be proven!!")
     }
-        
-    val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)), ctx.multOp)
+
+    val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr, Not(fullPost)), ctx.multOp)
     //for debugging
-    println("falttened VC: " + ScalaPrinter(vcExpr))   
-    
-    //Create and initialize a constraint tracker
+    println("falttened VC: " + ScalaPrinter(vcExpr))
+
+    //Create a constraint tracker
     val constTracker = new ConstraintTracker(ctx, funDef, tempFactory)
-    constTracker.addVC(funDef, vcExpr)    
+    constTracker.addVC(funDef, vcExpr)
 
     val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
     //refinement engine state
     var refinementStep: Int = 0
-    var toRefineCalls : Option[Set[Call]] = None
-    
+    var toRefineCalls: Option[Set[Call]] = None
+
     val inferenceEngine = () => {
 
       Stats.updateCounter(1, "VC-refinement")
       /* uncomment if we want to bound refinements
        * if (refinementStep >= 5)
           throw IllegalStateException("Done 4 refinements")*/
-           
+
       val refined =
         if (refinementStep >= 1) {
 
           reporter.info("- More unrollings for invariant inference")
 
-          val toUnrollCalls = if(ctx.targettedUnroll) toRefineCalls else None
-          val unrolledCalls = constTracker.refineVCs(toUnrollCalls)          
+          val toUnrollCalls = if (ctx.targettedUnroll) toRefineCalls else None
+          val unrolledCalls = constTracker.refineVCs(toUnrollCalls)
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false
           } else true
-          
-        } else {          
+
+        } else {
           constTracker.initialize
           true
-        } 
+        }
 
       refinementStep += 1
 
@@ -115,13 +117,28 @@ class InferenceEngineGenerator(ctx: InferenceContext,
 
           var output = "Invariants for Function: " + funDef.id + "\n"
           res.get.foreach((pair) => {
-            val (fd, inv) = pair                                    
-            val simpInv = simplifyArithmetic(replaceInstruVars(multToTimes(inv, ctx),fd))
+            val (fd, inv) = pair
+            val simpInv = simplifyArithmetic(replaceInstruVars(multToTimes(inv, ctx), fd))
             reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(simpInv))
             output += fd.id + " --> " + simpInv + "\n"
           })
           //add invariants to stats
-          SpecificStats.addOutput(output)          
+          SpecificStats.addOutput(output)
+
+          //if required dump then as Sygus benchmarks
+          if (dumpVCasSygus) {
+            import ExpressionTransformer._            
+            val plainVC = And(constTracker.getFuncs.map {
+                fd => constTracker.getVC(fd).unpackedExpr
+              })
+            //val freevars =  variablesOf(plainBody) ++ variablesOf(plainVC).filter(TemplateIdFactory.IsTemplateIdentifier _)
+            val unsatVC = convertAndsOrsToBinary(simplifyArithmetic(plainVC))
+            //println("unsatVC: "+unsatVC)           
+            val synthlibGen = new LeonExprtoSynthlib(Not(unsatVC), ctx.leonContext)
+            val filename = funDef.id + "-vc-" + FileCountGUID.getID
+            synthlibGen.toSygus(filename)
+            println("Dumped VC to synthlib file: " + filename)
+          }
 
           reporter.info("- Verifying Invariants... ")
 
@@ -144,10 +161,10 @@ class InferenceEngineGenerator(ctx: InferenceContext,
               //return the invariant for the root function
               (Some(true), Some(res.get))
             }
-          }                            
+          }
           //check for invariant strength          
           finalRes
-          
+
         } else {
           //here, we do not know if the template is solvable or not, we need to do more unrollings.
           (None, None)
@@ -156,10 +173,10 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     }
     inferenceEngine
   }
-  
+
   /**
    * This function creates a new program with each function postcondition strengthened by
-   * the inferred postcondition   
+   * the inferred postcondition
    */
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
 
@@ -216,23 +233,23 @@ class InferenceEngineGenerator(ctx: InferenceContext,
       } else None
     })
 
-    val augmentedProg = Util.copyProgram(program, (defs :Seq[Definition]) => defs.collect {
-      case fd: FunDef if(newFundefs.contains(fd)) => newFundefs(fd)
-      case d if(!d.isInstanceOf[FunDef]) => d
-    })    
+    val augmentedProg = Util.copyProgram(program, (defs: Seq[Definition]) => defs.collect {
+      case fd: FunDef if (newFundefs.contains(fd)) => newFundefs(fd)
+      case d if (!d.isInstanceOf[FunDef]) => d
+    })
     /*val newDefs = program.defs.collect {
       case fd: FunDef if(newFundefs.contains(fd)) => newFundefs(fd)
       case d if(!d.isInstanceOf[FunDef]) => d
     }*/
     //val augmentedProg = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    
+
     //convert the program back to an integer program if necessary
     val (newprog, newroot) = if (ctx.usereals) {
       val realToIntconverter = new RealToIntProgram()
       val intProg = realToIntconverter(augmentedProg)
-      (intProg, realToIntconverter.mappedFun(newFundefs(rootfd)))      
+      (intProg, realToIntconverter.mappedFun(newFundefs(rootfd)))
     } else {
-      (augmentedProg,newFundefs(rootfd))
+      (augmentedProg, newFundefs(rootfd))
     }
     //println("Program: "+newprog)
     //println(ScalaPrinter(newprog))
@@ -262,29 +279,29 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     //    }
     sat
   }
-  
-//  def testInvairantStrength(tempSolver: TemplateSolver, invs: Map[Identifier,Expr], rootFun : FunDef) : Unit = {
-//    //now verify the lower bounds                  
-//          val lbModel = tempSolver.lowerBoundMap.map((entry) => (entry._1.id -> entry._2.asInstanceOf[Expr]))
-//          val lbExpr = TemplateInstantiator.getAllInvariants(lbModel, Map(funDef -> tempFactory.getTemplate(funDef).get))
-//          val counterRes = verifyInvariant(lbExpr, funDef)         
-//          counterRes._1 match {
-//            case Some(false) => {
-//              val out = "Found stronger inductive invariant: "+lbExpr
-//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-//              reporter.error("- " + out)          
-//            }
-//            case Some(true) => {
-//              val out = "Found counter example for lower bound"
-//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-//              reporter.error(out )             
-//            }
-//            case _ => {
-//              val out = "Timeout on disproving lower bound"
-//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-//              //the solver timed out here
-//              reporter.error("- "+out)              
-//            }            
-//          }
-//  }
+
+  //  def testInvairantStrength(tempSolver: TemplateSolver, invs: Map[Identifier,Expr], rootFun : FunDef) : Unit = {
+  //    //now verify the lower bounds                  
+  //          val lbModel = tempSolver.lowerBoundMap.map((entry) => (entry._1.id -> entry._2.asInstanceOf[Expr]))
+  //          val lbExpr = TemplateInstantiator.getAllInvariants(lbModel, Map(funDef -> tempFactory.getTemplate(funDef).get))
+  //          val counterRes = verifyInvariant(lbExpr, funDef)         
+  //          counterRes._1 match {
+  //            case Some(false) => {
+  //              val out = "Found stronger inductive invariant: "+lbExpr
+  //              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+  //              reporter.error("- " + out)          
+  //            }
+  //            case Some(true) => {
+  //              val out = "Found counter example for lower bound"
+  //              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+  //              reporter.error(out )             
+  //            }
+  //            case _ => {
+  //              val out = "Timeout on disproving lower bound"
+  //              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+  //              //the solver timed out here
+  //              reporter.error("- "+out)              
+  //            }            
+  //          }
+  //  }
 }

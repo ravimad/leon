@@ -417,6 +417,23 @@ object ExpressionTransformer {
     })(expr)
   }
 
+  /**
+   * Eliminates redundant nesting of ORs and ANDs.
+   * This is supposed to be a semantic preserving transformation
+   */
+  def convertAndsOrsToBinary(expr: Expr): Expr = {	  
+    simplePostTransform((e: Expr) => e match {
+      case Or(args) if args.size > 2 => {        
+        args.tail.foldLeft(args.head)((acc, arg) => Or(acc, arg))
+      }
+      case And(args) if args.size > 2 => {        
+        args.tail.foldLeft(args.head)((acc, arg) => And.applyBinary(acc, arg))
+      }
+      case _ =>
+        e
+    })(expr)
+  }
+
   def classSelToCons(e: Expr): Expr = {
     val (r, cd, ccvar, ccfld) = e match {
       case Equals(r0 @ Variable(_), CaseClassSelector(cd0, ccvar0, ccfld0)) => (r0, cd0, ccvar0, ccfld0)
@@ -632,5 +649,5 @@ object ExpressionTransformer {
     }
     printRec(expr, 0)
   }
-
+  
 }
