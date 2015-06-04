@@ -1,0 +1,27 @@
+(set-logic LIA)
+
+(declare-var q!2 Int)
+(declare-var r!6 Int)
+(declare-var front!3 Int)
+(declare-var ifres!4 Int)
+(declare-var ifres!5 Int)
+(declare-var arg!2 Int)
+(declare-var arg!3 Int)
+(declare-var l!6 Int)
+(declare-var arg!4 Int)
+(declare-var ifres!2 Int)
+(declare-var res!34 Int)
+(declare-var r!7 Int)
+(declare-var r!8 Int)
+(declare-var r!5 Int)
+(declare-var ifres!3 Int)
+(declare-var res!22 Int)
+(declare-var rear!3 Int)
+(declare-fun removeLast!3 (Int) Int)
+(synth-fun a?!6 () Int ((Start Int ((Constant Int)))))
+(synth-fun b?!6 () Int ((Start Int ((Constant Int)))))
+
+(constraint (not (and (and (and (and (and (and (and (and (and (and (= (+ (- (- rear!3) front!3) q!2) (- 0)) (<= (+ (- q!2) 1) (- 0))) (<= (- rear!3 front!3) (- 0))) (<= (- rear!3) (- 0))) (= (+ (- ifres!2) res!22) (- 0))) (or (and (<= (+ (- rear!3) 1) (- 0)) (= (+ ifres!2 (- 3)) (- 0))) (and (and (and (and (and (or (<= front!3 (- 0)) (<= (+ (+ (* (- 7) front!3) r!5) 2) (- 0))) (= (+ (- ifres!4) r!5) (- 0))) (or (and (= (+ front!3 (- 1)) (- 0)) (= (+ ifres!4 (- 4)) (- 0))) (and (and (and (and (or (<= arg!3 (- 0)) (<= (+ (+ (* (- 7) arg!3) r!7) 2) (- 0))) (or (<= front!3 (- 0)) (<= (+ (- front!3) 2) (- 0)))) (= (+ (- ifres!4 r!7) (- 6)) (- 0))) (= (+ (- arg!3 front!3) 1) (- 0))) (= r!7 (removeLast!3 arg!3))))) (<= rear!3 (- 0))) (= (+ (- ifres!2 r!5) (- 5)) (- 0))) (= r!5 (removeLast!3 front!3))))) (< (+ (- (* (a?!6) q!2) res!22) (b?!6)) (- 0))) (<= (+ (- l!6) 1) (- 0))) (= (+ (- ifres!3) res!34) (- 0))) (or (and (= (+ l!6 (- 1)) (- 0)) (= (+ ifres!3 (- 4)) (- 0))) (and (and (and (and (and (and (or (<= arg!2 (- 0)) (<= (+ (+ (* (- 7) arg!2) r!6) 2) (- 0))) (= (+ (- ifres!5) r!6) (- 0))) (or (and (= (+ arg!2 (- 1)) (- 0)) (= (+ ifres!5 (- 4)) (- 0))) (and (and (and (or (<= arg!2 (- 0)) (<= (+ (- arg!2) 2) (- 0))) (= (+ (+ (- r!8) ifres!5) (- 6)) (- 0))) (= (+ (- arg!4 arg!2) 1) (- 0))) (= r!8 (removeLast!3 arg!4))))) (or (<= l!6 (- 0)) (<= (+ (- l!6) 2) (- 0)))) (= (+ (- ifres!3 r!6) (- 6)) (- 0))) (= (+ (+ (- l!6) arg!2) 1) (- 0))) (= r!6 (removeLast!3 arg!2))))) (<= (+ (- (* 7 l!6) res!34) (- 1)) (- 0)))))
+
+(check-synth)
+
